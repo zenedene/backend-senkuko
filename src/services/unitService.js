@@ -1,5 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
-const unitModel = require('../models/unitModel');
+import { v4 as uuidv4 }  from 'uuid';
+import unitModel from '../models/unitModel.js';
 
 const getAllUnits = async () => {
   return await unitModel.findAll();
@@ -32,4 +32,4 @@ const deleteUnit = async (id) => {
   return { message: 'Unit deleted successfully' };
 };
 
-module.exports = { getAllUnits, getUnitById, createUnit, updateUnit, deleteUnit };
+export default{ getAllUnits, getUnitById, createUnit, updateUnit, deleteUnit };

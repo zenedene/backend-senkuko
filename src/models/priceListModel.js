@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+import pool from '../config/database.js';
 
 const findAll = async () => {
   const [rows] = await pool.query(`
@@ -60,4 +60,5 @@ const remove = async (id) => {
   return result.affectedRows;
 };
 
-module.exports = { findAll, findById, findByCode, countUsageByPriceList, create, update, remove };
+const priceListModel = { findAll, findById, findByCode, countUsageByPriceList, create, update, remove };
+export default priceListModel

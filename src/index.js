@@ -1,15 +1,15 @@
-require("dotenv").config();
-const express = require("express");
-const pool = require("./config/database");
-const productRoutes = require("./routes/productRoutes");
-const categoryRoutes = require("./routes/categoryRoutes");
-const unitRoutes = require("./routes/unitRoutes");
-const productVariantRoutes = require("./routes/productVariantRoutes");
-const priceListRoutes = require("./routes/priceListRoutes");
-const productPriceRoutes = require('./routes/productPriceRoutes');
-const customerRoutes = require('./routes/customerRoutes');
+import 'dotenv/config';
+import express from "express";
+import pool from "./config/database.js";
+import productRoutes from "./routes/productRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import unitRoutes from "./routes/unitRoutes.js";
+import productVariantRoutes from "./routes/productVariantRoutes.js";
+import priceListRoutes from "./routes/priceListRoutes.js";
+import productPriceRoutes from './routes/productPriceRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
 
-const app = express();
+const app = express();  
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());

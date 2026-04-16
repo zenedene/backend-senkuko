@@ -1,7 +1,7 @@
-const { v4: uuidv4 } = require('uuid');
-const productVariantModel = require('../models/productVariantModel');
-const productModel = require('../models/productModel');
-const unitModel = require('../models/unitModel');
+import { v4 as uuidv4 }  from 'uuid';
+import productVariantModel from '../models/productVariantModel.js';
+import productModel from '../models/productModel.js';
+import unitModel from '../models/unitModel.js';
 
 const getAllVariants = async () => {
   return await productVariantModel.findAll();
@@ -69,8 +69,7 @@ const deleteVariant = async (id) => {
   if (!affected) throw new Error('Failed to delete product variant');
   return { message: 'Product variant deleted successfully' };
 };
-
-module.exports = {
+export default {
   getAllVariants,
   getVariantById,
   getVariantsByProduct,

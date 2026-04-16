@@ -1,5 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
-const categoryModel = require('../models/categoryModel');
+import { v4 as uuidv4 }  from 'uuid';
+import categoryModel from '../models/categoryModel.js';
 
 const getAllCategories = async () => {
   return await categoryModel.findAll();
@@ -58,7 +58,7 @@ const deleteCategory = async (id) => {
   return { message: 'Category deleted successfully' };
 };
 
-module.exports = {
+export default {
   getAllCategories,
   getCategoryById,
   getCategoryWithChildren,

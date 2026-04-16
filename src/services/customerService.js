@@ -1,5 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
-const customerModel = require('../models/customerModel');
+import { v4 as uuidv4 }  from 'uuid';
+import customerModel from '../models/customerModel.js';
 
 const VALID_MEMBER_TYPES = ['regular', 'member', 'vip'];
 
@@ -65,7 +65,7 @@ const deleteCustomer = async (id) => {
   return { message: 'Customer deleted successfully' };
 };
 
-module.exports = {
+export default {
   getAllCustomers,
   getCustomerById,
   createCustomer,

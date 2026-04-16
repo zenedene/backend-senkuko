@@ -1,4 +1,4 @@
-const productPriceService = require('../services/productPriceService');
+import productPriceService  from '../services/productPriceService.js';
 
 const getAll = async (req, res) => {
   try {
@@ -58,4 +58,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, getByVariant, create, update, remove };
+export default { getAll, getById, getByVariant, create, update, remove };

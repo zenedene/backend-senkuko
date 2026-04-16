@@ -1,6 +1,6 @@
-const express = require('express');
+import express from "express";
 const router = express.Router();
-const unitController = require('../controllers/unitController');
+import unitController from '../controllers/unitController.js';
 
 router.get('/', unitController.getAll);
 router.get('/:id', unitController.getById);
@@ -8,4 +8,4 @@ router.post('/', unitController.create);
 router.put('/:id', unitController.update);
 router.delete('/:id', unitController.remove);
 
-module.exports = router;
+export default router;

@@ -1,5 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
-const priceListModel = require('../models/priceListModel');
+import { v4 as uuidv4 }  from 'uuid';
+import priceListModel from '../models/priceListModel.js';
 
 const getAllPriceLists = async () => {
   return await priceListModel.findAll();
@@ -45,7 +45,7 @@ const deletePriceList = async (id) => {
   return { message: 'Price list deleted successfully' };
 };
 
-module.exports = {
+export default {
   getAllPriceLists,
   getPriceListById,
   createPriceList,

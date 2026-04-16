@@ -1,5 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
-const productModel = require('../models/productModel');
+import { v4 as uuidv4 }  from 'uuid';
+import productModel from '../models/productModel.js';
 
 const getAllProducts = async () => {
   return await productModel.findAll();
@@ -38,7 +38,7 @@ const deleteProduct = async (id) => {
   return { message: 'Product deleted successfully' };
 };
 
-module.exports = {
+export default {
   getAllProducts,
   getProductById,
   getProductWithVariants,

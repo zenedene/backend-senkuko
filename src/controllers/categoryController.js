@@ -1,4 +1,4 @@
-const categoryService = require('../services/categoryService');
+import categoryService  from '../services/categoryService.js';
 
 const getAll = async (req, res) => {
   try {
@@ -58,4 +58,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, getWithChildren, create, update, remove };
+export default { getAll, getById, getWithChildren, create, update, remove };

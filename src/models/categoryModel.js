@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+import pool from '../config/database.js';
 
 const findAll = async () => {
   const [rows] = await pool.query(`
@@ -79,4 +79,5 @@ const countProductsByCategory = async (categoryId) => {
   return rows[0].total;
 };
 
-module.exports = { findAll, findById, findChildren, countProductsByCategory, create, update, remove };
+const categoryModel = { findAll, findById, findChildren, countProductsByCategory, create, update, remove };
+export default categoryModel

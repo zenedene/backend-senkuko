@@ -1,4 +1,4 @@
-const priceListService = require('../services/priceListService');
+import priceListService from '../services/priceListService.js';
 
 const getAll = async (req, res) => {
   try {
@@ -48,4 +48,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, create, update, remove };
+export default { getAll, getById, create, update, remove };

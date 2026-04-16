@@ -1,4 +1,4 @@
-require('dotenv').config({ path: './src/.env' });
+import 'dotenv/config';
 
 module.exports = {
   development: {
@@ -8,9 +8,9 @@ module.exports = {
   user: 'root',
   password: '',
   database: 'sankuko',
-  authPlugins: {
-    mysql_native_password: () => () => Buffer.from(''),
-  },
+  authPlugins: {                          // ← tambahkan ini
+    mysql_native_password: () => () => Buffer.from(process.env.DB_PASSWORD + '\0')
+  }
     },
     migrations: {
       directory: './src/database/migrations',
