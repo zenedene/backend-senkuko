@@ -87,9 +87,14 @@ const deleteProductPrice = async (id) => {
   return { message: 'Product price deleted successfully' };
 };
 
+const getProductPricesByFilters = async (filters) => {
+  return await productPriceModel.findByFilters(filters);
+};
+
 export default {
   getAllProductPrices,
   getProductPriceById,
+  getProductPricesByFilters,
   getPricesByVariant,
   createProductPrice,
   updateProductPrice,

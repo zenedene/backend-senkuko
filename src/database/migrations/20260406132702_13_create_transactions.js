@@ -1,4 +1,4 @@
-exports.up = function (knex) {
+export const up = function (knex) {
   return knex.schema.createTable('transactions', (table) => {
     table.uuid('id').primary();
     table.string('invoice_number').notNullable().unique();
@@ -13,11 +13,9 @@ exports.up = function (knex) {
     table.string('payment_method').nullable();
     table.timestamp('transacted_at').defaultTo(knex.fn.now());
     table.timestamp('created_at').defaultTo(knex.fn.now());
-
     table.foreign('customer_id').references('id').inTable('customers').onDelete('SET NULL');
   });
 };
-
-exports.down = function (knex) {
+export const down = function (knex) {
   return knex.schema.dropTableIfExists('transactions');
 };

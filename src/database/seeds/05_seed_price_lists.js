@@ -1,7 +1,9 @@
-const { v4: uuidv4 } = require('uuid');
+// 04_price_lists.js
+import { v4 as uuidv4 } from 'uuid';
 
-exports.seed = async function (knex) {
-   await knex('product_prices').del();
+export async function seed(knex) {
+  // Remove old price‑list data first
+  await knex('product_prices').del();
   await knex('price_lists').del();
 
   await knex('price_lists').insert([
@@ -27,4 +29,4 @@ exports.seed = async function (knex) {
       is_active: true,
     },
   ]);
-};
+}

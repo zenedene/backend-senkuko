@@ -1,16 +1,14 @@
-import 'dotenv/config';
+require('dotenv').config();
 
 module.exports = {
   development: {
     client: 'mysql2',
     connection: {
-  host: '127.0.0.1',
-  user: 'root',
-  password: '',
-  database: 'sankuko',
-  authPlugins: {                          // ← tambahkan ini
-    mysql_native_password: () => () => Buffer.from(process.env.DB_PASSWORD + '\0')
-  }
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
     },
     migrations: {
       directory: './src/database/migrations',

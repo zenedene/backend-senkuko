@@ -113,12 +113,56 @@ const remove = async (id) => {
   return result.affectedRows;
 };
 
+const findByFilters = async (filters) => {
+  let query = `
+    SELECT
+      pp.id,
+      pp.min_qty,
+      pp.price,
+      pp.valid_from,
+      pp.valid_to,
+      pp.is_active,
+      pv.id AS product_variant_id,
+      pv.name AS product_variant_name,
+      pl.id AS price_list_id,
+      pl.name AS price_list_name,
+      pl.code AS price_list_code
+    FROM product_prices pp
+    LEFT JOIN product_variants pv ON pp.product_variant_id = pv.id
+    LEFT JOIN price_lists pl ON pp.price_list_id = pl.id
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.price_list_code) {
+    query += ` AND pl.code = ?`;
+    params.push(filters.price_list_code);
+  }
+
+  if (filters.price_list_id) {
+    query += ` AND pp.price_list_id = ?`;
+    params.push(filters.price_list_id);
+  }
+
+  if (filters.is_active !== undefined) {
+    query += ` AND pp.is_active = ?`;
+    params.push(filters.is_active);
+  }
+
+  query += ` ORDER BY pv.name ASC, pl.name ASC, pp.min_qty ASC`;
+
+  const [rows] = await pool.query(query, params);
+  return rows;
+};
+
 const productPriceModel = {
   findAll,
   findById,
   findByVariantId,
   findDuplicate,
   countByVariantId,
+  findByFilters,
   create,
   update,
   remove,

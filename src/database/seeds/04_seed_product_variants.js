@@ -1,17 +1,20 @@
-const { v4: uuidv4 } = require('uuid');
+// 03_product_variants.js
+import { v4 as uuidv4 } from 'uuid';
 
-exports.seed = async function (knex) {
-    await knex('product_prices').del();
+export async function seed(knex) {
+  // Clear dependent price table first
+  await knex('product_prices').del();
   await knex('product_variants').del();
 
+  // Look‑up ids we need for the FK columns
   const products = await knex('products').select('id', 'sku_code');
-  const units = await knex('units').select('id', 'symbol');
+  const units    = await knex('units').select('id', 'symbol');
 
-  const getProductId = (sku) => products.find((p) => p.sku_code === sku)?.id;
-  const getUnitId = (symbol) => units.find((u) => u.symbol === symbol)?.id;
+  const getProductId = sku => products.find(p => p.sku_code === sku)?.id;
+  const getUnitId    = sym => units.find(u => u.symbol === sym)?.id;
 
   await knex('product_variants').insert([
-    // Aqua
+    // --- Aqua -------------------------------------------------
     {
       id: uuidv4(),
       product_id: getProductId('PRD-001'),
@@ -38,7 +41,8 @@ exports.seed = async function (knex) {
       is_active: true,
       created_at: new Date(),
     },
-    // Teh Botol
+
+    // --- Teh Botol -------------------------------------------
     {
       id: uuidv4(),
       product_id: getProductId('PRD-002'),
@@ -52,7 +56,8 @@ exports.seed = async function (knex) {
       is_active: true,
       created_at: new Date(),
     },
-    // Kopi Kapal Api
+
+    // --- Kopi Kapal Api ---------------------------------------
     {
       id: uuidv4(),
       product_id: getProductId('PRD-003'),
@@ -66,7 +71,8 @@ exports.seed = async function (knex) {
       is_active: true,
       created_at: new Date(),
     },
-    // Indomie
+
+    // --- Indomie Goreng ---------------------------------------
     {
       id: uuidv4(),
       product_id: getProductId('PRD-004'),
@@ -93,7 +99,8 @@ exports.seed = async function (knex) {
       is_active: true,
       created_at: new Date(),
     },
-    // Chitato
+
+    // --- Chitato ---------------------------------------------
     {
       id: uuidv4(),
       product_id: getProductId('PRD-005'),
@@ -108,4 +115,4 @@ exports.seed = async function (knex) {
       created_at: new Date(),
     },
   ]);
-};
+}

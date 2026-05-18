@@ -1,4 +1,4 @@
-exports.up = function (knex) {
+export const up = function (knex) {
   return knex.schema.createTable('units', (table) => {
     table.uuid('id').primary();
     table.string('name').notNullable();
@@ -6,7 +6,6 @@ exports.up = function (knex) {
     table.string('description').nullable();
   });
 };
-
-exports.down = function (knex) {
+export const down = function (knex) {
   return knex.schema.dropTableIfExists('units');
 };

@@ -1,4 +1,4 @@
-exports.up = function (knex) {
+export const up = function (knex) {
   return knex.schema.createTable('categories', (table) => {
     table.uuid('id').primary();
     table.string('name').notNullable();
@@ -7,11 +7,9 @@ exports.up = function (knex) {
     table.integer('sort_order').defaultTo(0);
     table.boolean('is_active').defaultTo(true);
     table.timestamp('created_at').defaultTo(knex.fn.now());
-
     table.foreign('parent_id').references('id').inTable('categories').onDelete('SET NULL');
   });
 };
-
-exports.down = function (knex) {
+export const down = function (knex) {
   return knex.schema.dropTableIfExists('categories');
 };

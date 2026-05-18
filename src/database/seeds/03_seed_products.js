@@ -1,13 +1,15 @@
-const { v4: uuidv4 } = require('uuid');
+// 02_products.js
+import { v4 as uuidv4 } from 'uuid';
 
-exports.seed = async function (knex) {
+export async function seed(knex) {
+  // NOTE: make sure the tables that reference products are empty first
   await knex('product_prices').del();
   await knex('product_variants').del();
   await knex('products').del();
 
-
+  // Grab the category ids once – we need them for the FK `category_id`
   const categories = await knex('categories').select('id', 'slug');
-  const getCategoryId = (slug) => categories.find((c) => c.slug === slug)?.id;
+  const getCategoryId = slug => categories.find(c => c.slug === slug)?.id;
 
   await knex('products').insert([
     {
@@ -66,4 +68,4 @@ exports.seed = async function (knex) {
       updated_at: new Date(),
     },
   ]);
-};
+}

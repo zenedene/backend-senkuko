@@ -1,4 +1,4 @@
-exports.up = function (knex) {
+export const up = function (knex) {
   return knex.schema.createTable('promotion_conditions', (table) => {
     table.uuid('id').primary();
     table.uuid('promotion_id').notNullable();
@@ -7,11 +7,9 @@ exports.up = function (knex) {
     table.text('value').notNullable();
     table.string('target_type').nullable();
     table.uuid('target_id').nullable();
-
     table.foreign('promotion_id').references('id').inTable('promotions').onDelete('CASCADE');
   });
 };
-
-exports.down = function (knex) {
+export const down = function (knex) {
   return knex.schema.dropTableIfExists('promotion_conditions');
 };

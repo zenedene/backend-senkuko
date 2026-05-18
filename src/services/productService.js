@@ -1,5 +1,6 @@
 import { v4 as uuidv4 }  from 'uuid';
 import productModel from '../models/productModel.js';
+import priceListModel from '../models/priceListModel.js';
 
 const getAllProducts = async () => {
   return await productModel.findAll();
@@ -9,6 +10,29 @@ const getProductById = async (id) => {
   const product = await productModel.findById(id);
   if (!product) throw new Error('Product not found');
   return product;
+};
+
+const getProductWithVariantsAndPrice = async (id, priceListId) => {
+  const product = await productModel.findById(id);
+  if (!product) throw new Error('Product not found');
+
+  if (!priceListId) throw new Error('price_list_id query parameter is required');
+
+  const priceList = await priceListModel.findById(priceListId);
+  if (!priceList) throw new Error('Price list not found');
+  if (!priceList.is_active) throw new Error('Price list is not active');
+
+  const variants = await productModel.findVariantsByProductIdWithPrice(id, priceListId);
+
+  return {
+    ...product,
+    price_list: {
+      id: priceList.id,
+      name: priceList.name,
+      code: priceList.code,
+    },
+    variants,
+  };
 };
 
 const getProductWithVariants = async (id) => {
@@ -42,6 +66,7 @@ export default {
   getAllProducts,
   getProductById,
   getProductWithVariants,
+  getProductWithVariantsAndPrice,
   createProduct,
   updateProduct,
   deleteProduct,

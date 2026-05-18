@@ -1,4 +1,4 @@
-exports.up = function (knex) {
+export const up = function (knex) {
   return knex.schema.createTable('stock_ledger', (table) => {
     table.uuid('id').primary();
     table.uuid('product_variant_id').notNullable();
@@ -9,11 +9,9 @@ exports.up = function (knex) {
     table.integer('qty_after').notNullable();
     table.string('note').nullable();
     table.timestamp('created_at').defaultTo(knex.fn.now());
-
     table.foreign('product_variant_id').references('id').inTable('product_variants').onDelete('RESTRICT');
   });
 };
-
-exports.down = function (knex) {
+export const down = function (knex) {
   return knex.schema.dropTableIfExists('stock_ledger');
 };

@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+import { v4 as uuidv4 } from 'uuid';
 
 const parentCategories = [
   { id: uuidv4(), name: 'Minuman', slug: 'minuman' },
@@ -6,8 +6,8 @@ const parentCategories = [
   { id: uuidv4(), name: 'Snack', slug: 'snack' },
 ];
 
-exports.seed = async function (knex) {
-   await knex('free_item_rewards').del();
+export const seed = async function (knex) {
+  await knex('free_item_rewards').del();
   await knex('transaction_item_promotions').del();
   await knex('transaction_promotions').del();
   await knex('transaction_items').del();
@@ -20,7 +20,6 @@ exports.seed = async function (knex) {
   await knex('stock_ledger').del();
   await knex('product_variants').del();
   await knex('products').del();
-  await knex('categories').del();
   await knex('categories').del();
 
   await knex('categories').insert(

@@ -2,7 +2,20 @@ import productPriceService  from '../services/productPriceService.js';
 
 const getAll = async (req, res) => {
   try {
-    const data = await productPriceService.getAllProductPrices();
+    const filters = {
+      price_list_code: req.query.price_list_code,
+      price_list_id: req.query.price_list_id,
+      is_active: req.query.is_active !== undefined
+        ? req.query.is_active === 'true'
+        : undefined,
+    };
+
+    const hasFilters = Object.values(filters).some(v => v !== undefined);
+
+    const data = hasFilters
+      ? await productPriceService.getProductPricesByFilters(filters)
+      : await productPriceService.getAllProductPrices();
+
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

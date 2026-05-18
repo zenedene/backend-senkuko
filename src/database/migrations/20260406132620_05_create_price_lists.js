@@ -1,4 +1,4 @@
-exports.up = function (knex) {
+export const up = function (knex) {
   return knex.schema.createTable('price_lists', (table) => {
     table.uuid('id').primary();
     table.string('name').notNullable();
@@ -7,7 +7,6 @@ exports.up = function (knex) {
     table.boolean('is_active').defaultTo(true);
   });
 };
-
-exports.down = function (knex) {
+export const down = function (knex) {
   return knex.schema.dropTableIfExists('price_lists');
 };

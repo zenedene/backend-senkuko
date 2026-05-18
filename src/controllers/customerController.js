@@ -1,4 +1,4 @@
-import customerService from '../services/customerService.js';
+import customerService from "../services/customerService.js";
 
 const getAll = async (req, res) => {
   try {
@@ -14,7 +14,7 @@ const getById = async (req, res) => {
     const data = await customerService.getCustomerById(req.params.id);
     res.json({ success: true, data });
   } catch (err) {
-    const status = err.message === 'Customer not found' ? 404 : 500;
+    const status = err.message === "Customer not found" ? 404 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
 };
@@ -33,7 +33,7 @@ const update = async (req, res) => {
     const data = await customerService.updateCustomer(req.params.id, req.body);
     res.json({ success: true, data });
   } catch (err) {
-    const status = err.message === 'Customer not found' ? 404 : 400;
+    const status = err.message === "Customer not found" ? 404 : 400;
     res.status(status).json({ success: false, message: err.message });
   }
 };
@@ -43,9 +43,39 @@ const remove = async (req, res) => {
     const result = await customerService.deleteCustomer(req.params.id);
     res.json({ success: true, ...result });
   } catch (err) {
-    const status = err.message === 'Customer not found' ? 404 : 400;
+    const status = err.message === "Customer not found" ? 404 : 400;
     res.status(status).json({ success: false, message: err.message });
   }
 };
 
-export default { getAll, getById, create, update, remove };
+const updateStatus = async (req, res) => {
+  try {
+    const data = await customerService.updateCustomerStatus(
+      req.params.id,
+      req.body.status,
+    );
+    res.json({ success: true, data });
+  } catch (err) {
+    const status = err.message === "Customer not found" ? 404 : 400;
+    res.status(status).json({ success: false, message: err.message });
+  }
+};
+
+const getByStatus = async (req, res) => {
+  try {
+    const data = await customerService.getCustomersByStatus(req.query.status);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export default {
+  getAll,
+  getById,
+  create,
+  update,
+  remove,
+  updateStatus,
+  getByStatus,
+};
