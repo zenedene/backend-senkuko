@@ -17,7 +17,7 @@ const getById = async (req, res) => {
     const status = err.message === 'Price list not found' ? 404 : 500;
     res.status(status).json({ success: false, message: err.message });
   }
-};
+};  
 
 const create = async (req, res) => {
   try {

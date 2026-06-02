@@ -14,7 +14,7 @@ const getAll = async (req, res) => {
 
     const data = hasFilters
       ? await productPriceService.getProductPricesByFilters(filters)
-      : await productPriceService.getAllProductPrices();
+      : await productPriceService.getAllProductPrices();  
 
     res.json({ success: true, data });
   } catch (err) {

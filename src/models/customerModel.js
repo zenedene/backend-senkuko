@@ -2,7 +2,7 @@ import pool from "../config/database.js";
 
 const findAll = async () => {
   const [rows] = await pool.query(`
-    SELECT id, name, phone, email, member_type, total_spend, status, created_at
+    SELECT id, code, name, address, city, phone, email, member_type, customer_group, region, subregion, total_spend, status, created_at
     FROM customers
     ORDER BY created_at DESC
   `);
@@ -12,7 +12,7 @@ const findAll = async () => {
 const findByStatus = async (status) => {
   const [rows] = await pool.query(
     `
-    SELECT id, name, phone, email, member_type, total_spend, status, created_at
+    SELECT id, code, name, address, city, phone, email, member_type, customer_group, region, subregion, total_spend, status, created_at
     FROM customers
     WHERE status = ?
     ORDER BY created_at DESC
@@ -35,7 +35,7 @@ const updateStatus = async (id, status) => {
 const findById = async (id) => {
   const [rows] = await pool.query(
     `
-    SELECT id, name, phone, email, member_type, total_spend, status, created_at
+    SELECT id, code, name, address, city, phone, email, member_type, customer_group, region, subregion, total_spend, status, created_at
     FROM customers
     WHERE id = ?
   `,
@@ -47,7 +47,7 @@ const findById = async (id) => {
 const findByPhone = async (phone) => {
   const [rows] = await pool.query(
     `
-    SELECT id, name, phone, email, member_type, total_spend, created_at
+    SELECT id, code, name, address, city, phone, email, member_type, customer_group, region, subregion, total_spend, created_at
     FROM customers
     WHERE phone = ?
   `,
@@ -59,7 +59,7 @@ const findByPhone = async (phone) => {
 const findByEmail = async (email) => {
   const [rows] = await pool.query(
     `
-    SELECT id, name, phone, email, member_type, total_spend, created_at
+    SELECT id, code, name, address, city, phone, email, member_type, customer_group, region, subregion, total_spend, created_at
     FROM customers
     WHERE email = ?
   `,
@@ -69,18 +69,37 @@ const findByEmail = async (email) => {
 };
 
 const create = async (data) => {
-  const { id, name, phone, email, member_type, total_spend } = data;
+  const {
+    id,
+    code,
+    name,
+    address,
+    city,
+    phone,
+    email,
+    member_type,
+    customer_group,
+    region,
+    subregion,
+    total_spend,
+  } = data;
   await pool.query(
     `
-    INSERT INTO customers (id, name, phone, email, member_type, total_spend, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, NOW())
+    INSERT INTO customers (id, code, name, address, city, phone, email, member_type, customer_group, region, subregion, total_spend, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
   `,
     [
       id,
+      code ?? null,
       name,
+      address ?? null,
+      city ?? null,
       phone ?? null,
       email ?? null,
       member_type ?? "regular",
+      customer_group ?? "General",
+      region ?? null,
+      subregion ?? null,
       total_spend ?? 0,
     ],
   );
@@ -88,14 +107,37 @@ const create = async (data) => {
 };
 
 const update = async (id, data) => {
-  const { name, phone, email, member_type } = data;
+  const {
+    name,
+    phone,
+    email,
+    member_type,
+    code,
+    address,
+    city,
+    customer_group,
+    region,
+    subregion,
+  } = data;
   await pool.query(
     `
     UPDATE customers
-    SET name = ?, phone = ?, email = ?, member_type = ?
+    SET code = ?, name = ?, address = ?, city = ?, phone = ?, email = ?, member_type = ?, customer_group = ?, region = ?, subregion = ?
     WHERE id = ?
   `,
-    [name, phone ?? null, email ?? null, member_type, id],
+    [
+      code ?? null,
+      name,
+      address ?? null,
+      city ?? null,
+      phone ?? null,
+      email ?? null,
+      member_type,
+      customer_group ?? "General",
+      region ?? null,
+      subregion ?? null,
+      id,
+    ],
   );
   return findById(id);
 };
