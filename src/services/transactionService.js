@@ -6,7 +6,7 @@ import productPriceModel from "../models/productPriceModel.js";
 import stockLedgerModel from "../models/stockLedgerModel.js";
 import customerModel from "../models/customerModel.js";
 import { applyPromotions, calculateReward } from "./promotionEngine.js";
-
+import snap from "../config/midtrans.js";
 
 const generateInvoiceNumber = async () => {
   const date = new Date();
@@ -26,7 +26,6 @@ const validateItems = async (items, priceListId) => {
   const validated = [];
 
   for (const item of items) {
-
     if (!item.product_variant_id)
       throw new Error("product_variant_id is required for each item");
     if (!item.qty || item.qty <= 0)
@@ -88,32 +87,46 @@ const createTransaction = async (data) => {
     items,
     promo_codes,
     voucher_codes,
-    paid_amount,
     payment_method,
+    delivery_address,
+    delivery_city,
+    delivery_region,
+    delivery_subregion,
+    delivery_note,
   } = data;
 
   if (!price_list_id) throw new Error("price_list_id is required");
   if (!items || items.length === 0)
     throw new Error("Transaction must have at least one item");
-  if (!paid_amount || paid_amount <= 0)
-    throw new Error("paid_amount is required");
   if (!payment_method) throw new Error("payment_method is required");
 
-  // Validasi customer jika ada
+  const VALID_PAYMENT_METHODS = [
+    "bank_transfer",
+    "qris",
+    "gopay",
+    "shopeepay",
+    "cod",
+  ];
+  if (!VALID_PAYMENT_METHODS.includes(payment_method)) {
+    throw new Error(
+      `Invalid payment_method. Valid values: ${VALID_PAYMENT_METHODS.join(", ")}`,
+    );
+  }
+
+  if (!delivery_address) throw new Error("delivery_address is required");
+  if (!delivery_city) throw new Error("delivery_city is required");
+  if (!delivery_region) throw new Error("delivery_region is required");
+
   let customer = null;
   if (customer_id) {
     customer = await customerModel.findById(customer_id);
     if (!customer) throw new Error("Customer not found");
   }
 
-  // Validasi semua items
   const validatedItems = await validateItems(items, price_list_id);
-
-  // Hitung subtotal awal
   const subtotal = validatedItems.reduce((sum, item) => sum + item.subtotal, 0);
   const totalQty = validatedItems.reduce((sum, item) => sum + item.qty, 0);
 
-  // Context untuk promotion engine
   const context = {
     subtotal,
     totalQty,
@@ -121,14 +134,12 @@ const createTransaction = async (data) => {
     customerMemberType: customer?.member_type ?? "regular",
   };
 
-  // Evaluasi promotions
   const appliedPromotions = await applyPromotions(
     promo_codes || [],
     voucher_codes || [],
     context,
   );
 
-  // Hitung semua diskon
   let totalDiscount = 0;
   const itemDiscountMap = {};
   const transactionPromos = [];
@@ -140,7 +151,6 @@ const createTransaction = async (data) => {
 
     for (const reward of rewards) {
       const result = calculateReward(reward, validatedItems, subtotal);
-
       promoDiscount += result.discountAmount;
       totalDiscount += result.discountAmount;
 
@@ -171,50 +181,48 @@ const createTransaction = async (data) => {
     });
   }
 
-  // Pastikan diskon tidak melebihi subtotal
   totalDiscount = Math.min(totalDiscount, subtotal);
   const grandTotal = subtotal - totalDiscount;
-  const changeAmount = Math.max(0, paid_amount - grandTotal);
 
-  if (paid_amount < grandTotal) {
-    throw new Error(
-      `Insufficient payment. Grand total: ${grandTotal}, Paid: ${paid_amount}`,
-    );
-  }
-
-  // Validasi free items stock
-  for (const { freeItem } of freeItemsToProcess) {
-    const variant = await productVariantModel.findById(freeItem.variantId);
-    if (!variant)
-      throw new Error(`Free item variant ${freeItem.variantId} not found`);
-    if (variant.stock_qty < freeItem.qty) {
-      throw new Error(`Insufficient stock for free item ${variant.name}`);
-    }
-  }
-
-  // Mulai transaction database
   const conn = await pool.getConnection();
   await conn.beginTransaction();
 
   try {
     const transactionId = uuidv4();
     const invoiceNumber = await generateInvoiceNumber();
+    const midtransOrderId = `ORDER-${invoiceNumber}`;
 
-    // Insert transaction
-    await conn.query(`
-  INSERT INTO transactions (
-    id, invoice_number, customer_id, status,
-    subtotal, total_discount, grand_total, paid_amount,
-    change_amount, payment_method, transacted_at, created_at
-  ) VALUES (?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, NOW(), NOW())
-`, [
-  transactionId, invoiceNumber, customer_id ?? null,
-  subtotal, totalDiscount, grandTotal, paid_amount, changeAmount, payment_method,
-]);
+    // Insert transaksi dengan status pending_payment
+    // Insert transaksi
+    await conn.query(
+      `
+      INSERT INTO transactions (
+        id, invoice_number, customer_id, status, payment_status,
+        subtotal, total_discount, grand_total, paid_amount,
+        change_amount, payment_method, midtrans_order_id,
+        delivery_address, delivery_city, delivery_region,
+        delivery_subregion, delivery_note,
+        transacted_at, created_at
+      ) VALUES (?, ?, ?, 'pending_payment', 'pending', ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+    `,
+      [
+        transactionId,
+        invoiceNumber,
+        customer_id ?? null,
+        subtotal,
+        totalDiscount,
+        grandTotal,
+        payment_method,
+        midtransOrderId,
+        delivery_address,
+        delivery_city,
+        delivery_region,
+        delivery_subregion ?? null,
+        delivery_note ?? null,
+      ],
+    );
 
     // Insert transaction items
-    const stockLedgerEntries = [];
-
     for (const item of validatedItems) {
       const itemId = uuidv4();
       const itemDiscount = itemDiscountMap[item.product_variant_id] ?? 0;
@@ -240,7 +248,6 @@ const createTransaction = async (data) => {
         ],
       );
 
-      // Insert transaction_item_promotions jika ada diskon per item
       if (itemDiscount > 0) {
         for (const { promotion } of appliedPromotions) {
           await conn.query(
@@ -259,31 +266,9 @@ const createTransaction = async (data) => {
           );
         }
       }
-
-      // Kurangi stock
-      const qtyBefore = item.stock_qty;
-      const qtyAfter = qtyBefore - item.qty;
-
-      await conn.query(
-        `
-        UPDATE product_variants SET stock_qty = ? WHERE id = ?
-      `,
-        [qtyAfter, item.product_variant_id],
-      );
-
-      stockLedgerEntries.push({
-        id: uuidv4(),
-        product_variant_id: item.product_variant_id,
-        reference_id: transactionId,
-        reference_type: "transaction",
-        qty_change: -item.qty,
-        qty_before: qtyBefore,
-        qty_after: qtyAfter,
-        note: `Sale - ${invoiceNumber}`,
-      });
     }
 
-    // Insert transaction promotions dan free items
+    // Insert transaction promotions
     for (const tp of transactionPromos) {
       await conn.query(
         `
@@ -302,50 +287,6 @@ const createTransaction = async (data) => {
         ],
       );
 
-      // Insert free items jika ada
-      const promoFreeItems = freeItemsToProcess.filter(
-        (f) => f.promotionId === tp.promotion.id,
-      );
-
-      for (const { freeItem } of promoFreeItems) {
-        const freeVariant = await productVariantModel.findById(
-          freeItem.variantId,
-        );
-        const qtyBefore = freeVariant.stock_qty;
-        const qtyAfter = qtyBefore - freeItem.qty;
-
-        await conn.query(
-          `
-          INSERT INTO free_item_rewards (
-            id, transaction_promotion_id, product_variant_id, qty, unit_price
-          ) VALUES (?, ?, ?, ?, ?)
-        `,
-          [uuidv4(), tp.id, freeItem.variantId, freeItem.qty, 0],
-        );
-
-        await conn.query(
-          `
-          UPDATE product_variants SET stock_qty = ? WHERE id = ?
-        `,
-          [qtyAfter, freeItem.variantId],
-        );
-
-        stockLedgerEntries.push({
-          id: uuidv4(),
-          product_variant_id: freeItem.variantId,
-          reference_id: transactionId,
-          reference_type: "transaction_free_item",
-          qty_change: -freeItem.qty,
-          qty_before: qtyBefore,
-          qty_after: qtyAfter,
-          note: `Free item - ${invoiceNumber} - ${tp.promotion.name}`,
-        });
-
-        // Update stock_qty di freeVariant agar tidak double kurang jika ada dua free item sama
-        freeVariant.stock_qty = qtyAfter;
-      }
-
-      // Increment usage count
       await conn.query(
         `
         UPDATE promotions SET usage_count = usage_count + 1 WHERE id = ?
@@ -363,53 +304,82 @@ const createTransaction = async (data) => {
       }
     }
 
-    // Insert stock ledger
-    if (stockLedgerEntries.length > 0) {
-      const values = stockLedgerEntries.map((e) => [
-        e.id,
-        e.product_variant_id,
-        e.reference_id,
-        e.reference_type,
-        e.qty_change,
-        e.qty_before,
-        e.qty_after,
-        e.note,
-        new Date(),
-      ]);
-      await conn.query(
-        `
-        INSERT INTO stock_ledger (
-          id, product_variant_id, reference_id, reference_type,
-          qty_change, qty_before, qty_after, note, created_at
-        ) VALUES ?
-      `,
-        [values],
-      );
-    }
-
-    // Update total spend customer
-    if (customer_id) {
-      await conn.query(
-        `
-        UPDATE customers SET total_spend = total_spend + ? WHERE id = ?
-      `,
-        [grandTotal, customer_id],
-      );
-    }
-
     await conn.commit();
 
-    // Return full transaction detail
-    const transaction = await transactionModel.findById(transactionId);
-    const transactionItems =
-      await transactionModel.findItemsByTransactionId(transactionId);
-    const transactionPromotions =
-      await transactionModel.findPromotionsByTransactionId(transactionId);
+    if (payment_method === "cod") {
+      return {
+        transaction_id: transactionId,
+        invoice_number: invoiceNumber,
+        grand_total: grandTotal,
+        payment_method: "cod",
+        status: "pending_payment",
+        message: "Order berhasil dibuat. Menunggu konfirmasi admin.",
+      };
+    }
+
+    // Request Snap Token ke Midtrans
+    const midtransPayload = {
+      transaction_details: {
+        order_id: midtransOrderId,
+        gross_amount: Math.round(grandTotal),
+      },
+      item_details: validatedItems.map((item) => ({
+        id: item.product_variant_id,
+        price: Math.round(item.unit_price),
+        quantity: item.qty,
+        name: item.variant_name,
+      })),
+      customer_details: customer
+        ? {
+            first_name: customer.name,
+            email:
+              customer.email && customer.email.trim() !== ""
+                ? customer.email
+                : undefined,
+            phone:
+              customer.phone && customer.phone.trim() !== ""
+                ? customer.phone
+                : undefined,
+          }
+        : undefined,
+      enabled_payments: ["bank_transfer", "gopay", "qris", "shopeepay"],
+    };
+
+    const midtransResponse = await snap.createTransaction(midtransPayload);
+
+    await pool.query(
+      `
+      UPDATE transactions
+      SET midtrans_token = ?, midtrans_pdf_url = ?
+      WHERE id = ?
+    `,
+      [midtransResponse.token, midtransResponse.redirect_url, transactionId],
+    );
 
     return {
-      ...transaction,
-      items: transactionItems,
-      promotions: transactionPromotions,
+      transaction_id: transactionId,
+      invoice_number: invoiceNumber,
+      grand_total: grandTotal,
+      snap_token: midtransResponse.token,
+      redirect_url: midtransResponse.redirect_url,
+    };
+
+    // Simpan snap token ke database
+    await pool.query(
+      `
+      UPDATE transactions
+      SET midtrans_token = ?, midtrans_pdf_url = ?
+      WHERE id = ?
+    `,
+      [midtransResponse.token, midtransResponse.redirect_url, transactionId],
+    );
+
+    return {
+      transaction_id: transactionId,
+      invoice_number: invoiceNumber,
+      grand_total: grandTotal,
+      snap_token: midtransResponse.token,
+      redirect_url: midtransResponse.redirect_url,
     };
   } catch (err) {
     await conn.rollback();
@@ -418,7 +388,6 @@ const createTransaction = async (data) => {
     conn.release();
   }
 };
-
 const getTransactionById = async (id) => {
   const transaction = await transactionModel.findById(id);
   if (!transaction) throw new Error("Transaction not found");
@@ -441,4 +410,257 @@ const getAllTransactions = async () => {
   return await transactionModel.findAll();
 };
 
-export default { createTransaction, getTransactionById, getAllTransactions };
+const handleMidtransWebhook = async (notification) => {
+  const { order_id, transaction_status, fraud_status, gross_amount } =
+    notification;
+
+  const [rows] = await pool.query(
+    `
+    SELECT * FROM transactions WHERE midtrans_order_id = ?
+  `,
+    [order_id],
+  );
+
+  const transaction = rows[0];
+  if (!transaction) throw new Error("Transaction not found");
+
+  let paymentStatus = "pending";
+  let transactionStatus = transaction.status;
+  let paidAt = null;
+
+  if (transaction_status === "capture" && fraud_status === "accept") {
+    paymentStatus = "paid";
+    transactionStatus = "processing";
+    paidAt = new Date();
+  } else if (transaction_status === "settlement") {
+    paymentStatus = "paid";
+    transactionStatus = "processing";
+    paidAt = new Date();
+  } else if (
+    transaction_status === "cancel" ||
+    transaction_status === "expire"
+  ) {
+    paymentStatus = transaction_status;
+    transactionStatus = "cancelled";
+  } else if (transaction_status === "deny") {
+    paymentStatus = "failed";
+    transactionStatus = "failed";
+  }
+
+  const conn = await pool.getConnection();
+  await conn.beginTransaction();
+
+  try {
+    await conn.query(
+      `
+      UPDATE transactions
+      SET payment_status = ?, status = ?,
+          paid_amount = ?, paid_at = ?
+      WHERE midtrans_order_id = ?
+    `,
+      [paymentStatus, transactionStatus, gross_amount, paidAt, order_id],
+    );
+
+    // Jika pembayaran berhasil, baru kurangi stok
+    if (paymentStatus === "paid") {
+      const [items] = await conn.query(
+        `
+        SELECT * FROM transaction_items WHERE transaction_id = ?
+      `,
+        [transaction.id],
+      );
+
+      const stockLedgerEntries = [];
+
+      for (const item of items) {
+        const [variantRows] = await conn.query(
+          `
+          SELECT stock_qty FROM product_variants WHERE id = ?
+        `,
+          [item.product_variant_id],
+        );
+
+        const qtyBefore = variantRows[0].stock_qty;
+        const qtyAfter = qtyBefore - item.qty;
+
+        await conn.query(
+          `
+          UPDATE product_variants SET stock_qty = ? WHERE id = ?
+        `,
+          [qtyAfter, item.product_variant_id],
+        );
+
+        stockLedgerEntries.push([
+          uuidv4(),
+          item.product_variant_id,
+          transaction.id,
+          "transaction",
+          -item.qty,
+          qtyBefore,
+          qtyAfter,
+          `Sale - ${transaction.invoice_number}`,
+          new Date(),
+        ]);
+      }
+
+      if (stockLedgerEntries.length > 0) {
+        await conn.query(
+          `
+          INSERT INTO stock_ledger (
+            id, product_variant_id, reference_id, reference_type,
+            qty_change, qty_before, qty_after, note, created_at
+          ) VALUES ?
+        `,
+          [stockLedgerEntries],
+        );
+      }
+
+      // Update total spend customer
+      if (transaction.customer_id) {
+        await conn.query(
+          `
+          UPDATE customers SET total_spend = total_spend + ? WHERE id = ?
+        `,
+          [gross_amount, transaction.customer_id],
+        );
+      }
+    }
+
+    await conn.commit();
+    return { message: "Webhook processed successfully" };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+};
+
+const updateTransactionStatus = async (id, status) => {
+  const VALID_STATUSES = [
+    "processing",
+    "shipped",
+    "completed",
+    "cancelled",
+    "paid",
+  ];
+
+  if (!VALID_STATUSES.includes(status)) {
+    throw new Error(
+      `Invalid status. Valid values: ${VALID_STATUSES.join(", ")}`,
+    );
+  }
+
+  const transaction = await transactionModel.findById(id);
+  if (!transaction) throw new Error("Transaction not found");
+
+  // Jika bukan COD, tidak boleh set paid manual
+  if (status === "paid" && transaction.payment_method !== "cod") {
+    throw new Error(
+      "Manual payment confirmation only allowed for COD transactions",
+    );
+  }
+
+  // Jika COD dan admin konfirmasi paid, kurangi stok
+  if (status === "paid" && transaction.payment_method === "cod") {
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    try {
+      await conn.query(
+        `
+        UPDATE transactions
+        SET status = 'completed', payment_status = 'paid', paid_at = NOW()
+        WHERE id = ?
+      `,
+        [id],
+      );
+
+      const [items] = await conn.query(
+        `
+        SELECT * FROM transaction_items WHERE transaction_id = ?
+      `,
+        [id],
+      );
+
+      const stockLedgerEntries = [];
+
+      for (const item of items) {
+        const [variantRows] = await conn.query(
+          `
+          SELECT stock_qty FROM product_variants WHERE id = ?
+        `,
+          [item.product_variant_id],
+        );
+
+        const qtyBefore = variantRows[0].stock_qty;
+        const qtyAfter = qtyBefore - item.qty;
+
+        await conn.query(
+          `
+          UPDATE product_variants SET stock_qty = ? WHERE id = ?
+        `,
+          [qtyAfter, item.product_variant_id],
+        );
+
+        stockLedgerEntries.push([
+          uuidv4(),
+          item.product_variant_id,
+          id,
+          "transaction",
+          -item.qty,
+          qtyBefore,
+          qtyAfter,
+          `COD Sale - ${transaction.invoice_number}`,
+          new Date(),
+        ]);
+      }
+
+      if (stockLedgerEntries.length > 0) {
+        await conn.query(
+          `
+          INSERT INTO stock_ledger (
+            id, product_variant_id, reference_id, reference_type,
+            qty_change, qty_before, qty_after, note, created_at
+          ) VALUES ?
+        `,
+          [stockLedgerEntries],
+        );
+      }
+
+      if (transaction.customer_id) {
+        await conn.query(
+          `
+          UPDATE customers SET total_spend = total_spend + ? WHERE id = ?
+        `,
+          [transaction.grand_total, transaction.customer_id],
+        );
+      }
+
+      await conn.commit();
+      return transactionModel.findById(id);
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  }
+
+  // Update status biasa untuk non-COD atau status selain paid
+  await pool.query(
+    `
+    UPDATE transactions SET status = ? WHERE id = ?
+  `,
+    [status, id],
+  );
+
+  return transactionModel.findById(id);
+};
+export default {
+  createTransaction,
+  getTransactionById,
+  getAllTransactions,
+  handleMidtransWebhook,
+  updateTransactionStatus,
+};

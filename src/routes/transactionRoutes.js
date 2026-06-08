@@ -1,8 +1,27 @@
 import express from "express";
-const router = express.Router();
-import transactionController from '../controllers/transactionController.js';
-router.get('/', transactionController.getAll);
-router.get('/:id', transactionController.getById);
-router.post('/', transactionController.create);
+import authMiddleware, { authorizeRole } from "../auth/authMiddleware.js";
+import transactionController from "../controllers/transactionController.js";
 
-export default router
+const router = express.Router();
+
+router.post("/webhook", transactionController.webhook);
+
+router.post("/", authMiddleware, transactionController.create);
+
+router.get(
+  "/",
+  authMiddleware,
+  authorizeRole("admin"),
+  transactionController.getAll,
+);
+
+router.get("/:id", authMiddleware, transactionController.getById);
+
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  authorizeRole("admin"),
+  transactionController.updateStatus,
+);
+
+export default router;

@@ -1,14 +1,30 @@
 import express from "express";
-const router = express.Router();
+import authMiddleware, { authorizeRole } from "../auth/authMiddleware.js";
 import productController from "../controllers/productController.js";
 import { upload } from "../middlewares/upload.js";
+const router = express.Router();
 
 router.get("/", productController.getAll);
 router.get("/:id", productController.getById);
 router.get("/:id/variants", productController.getWithVariants);
-router.post("/", productController.create);
-router.put("/:id", productController.update);
-router.delete("/:id", productController.remove);
+router.post(
+  "/",
+  authMiddleware,
+  authorizeRole("admin"),
+  productController.create,
+);
+router.put(
+  "/:id",
+  authMiddleware,
+  authorizeRole("admin"),
+  productController.update,
+);
+router.delete(
+  "/:id",
+  authMiddleware,
+  authorizeRole("admin"),
+  productController.remove,
+);
 router.get(
   "/:id/variants-with-price",
   productController.getWithVariantsAndPrice,
@@ -16,15 +32,29 @@ router.get(
 router.get("/:id/images", productController.getImages);
 router.post(
   "/:id/images",
+  authMiddleware,
+  authorizeRole("admin"),
   upload.single("image"),
   productController.uploadImage,
 );
 router.put(
   "/:id/images/:imageId",
+  authMiddleware,
+  authorizeRole("admin"),
   upload.single("image"),
   productController.updateImage,
 );
-router.patch("/:id/images/:imageId/primary", productController.setPrimaryImage);
-router.delete("/:id/images/:imageId", productController.deleteImage);
+router.patch(
+  "/:id/images/:imageId/primary",
+  authMiddleware,
+  authorizeRole("admin"),
+  productController.setPrimaryImage,
+);
+router.delete(
+  "/:id/images/:imageId",
+  authMiddleware,
+  authorizeRole("admin"),
+  productController.deleteImage,
+);
 
 export default router;

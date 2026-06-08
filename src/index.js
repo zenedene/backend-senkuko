@@ -11,7 +11,7 @@ import customerRoutes from './routes/customerRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
 import voucherRoutes from './routes/voucherRoutes.js';
-
+import authRoutes from './routes/authRoutes.js';
 
 const app = express();  
 const PORT = process.env.PORT || 3000;
@@ -25,10 +25,10 @@ app.use("/api/product-variants", productVariantRoutes);
 app.use("/api/price-lists", priceListRoutes);
 app.use('/api/product-prices', productPriceRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/vouchers', voucherRoutes);
-
 
 async function testConnection() {
   try {

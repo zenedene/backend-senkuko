@@ -1,38 +1,56 @@
-import pool from '../config/database.js';
+import pool from "../config/database.js";
 
 const create = async (conn, data) => {
   const {
-    id, invoice_number, customer_id, status,
-    subtotal, total_discount, grand_total, paid_amount,
-    change_amount, payment_method,
+    id,
+    invoice_number,
+    customer_id,
+    status,
+    subtotal,
+    total_discount,
+    grand_total,
+    paid_amount,
+    change_amount,
+    payment_method,
   } = data;
 
-  await conn.query(`
+  await conn.query(
+    `
     INSERT INTO transactions (
       id, invoice_number, customer_id, status,
       subtotal, total_discount, grand_total, paid_amount,
       change_amount, payment_method, transacted_at, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-  `, [
-    id, invoice_number, customer_id ?? null, status ?? 'completed',
-    subtotal, total_discount, grand_total, paid_amount,
-    change_amount, payment_method,
-  ]);
+  `,
+    [
+      id,
+      invoice_number,
+      customer_id ?? null,
+      status ?? "completed",
+      subtotal,
+      total_discount,
+      grand_total,
+      paid_amount,
+      change_amount,
+      payment_method,
+    ],
+  );
 };
 
 const findById = async (id) => {
-  const [rows] = await pool.query(`
+  const [rows] = await pool.query(
+    `
     SELECT
       t.*,
-      c.name AS customer_name,
-      c.member_type AS customer_member_type
+      c.name AS customer_name
     FROM transactions t
     LEFT JOIN customers c ON t.customer_id = c.id
     WHERE t.id = ?
-  `, [id]);
+  `,
+    [id],
+  );
   return rows[0] || null;
 };
-
 const findAll = async () => {
   const [rows] = await pool.query(`
     SELECT
@@ -56,7 +74,8 @@ const findAll = async () => {
 };
 
 const findItemsByTransactionId = async (transactionId) => {
-  const [rows] = await pool.query(`
+  const [rows] = await pool.query(
+    `
     SELECT
       ti.*,
       pv.name AS variant_name,
@@ -65,12 +84,15 @@ const findItemsByTransactionId = async (transactionId) => {
     LEFT JOIN product_variants pv ON ti.product_variant_id = pv.id
     LEFT JOIN price_lists pl ON ti.price_list_id = pl.id
     WHERE ti.transaction_id = ?
-  `, [transactionId]);
+  `,
+    [transactionId],
+  );
   return rows;
 };
 
 const findPromotionsByTransactionId = async (transactionId) => {
-  const [rows] = await pool.query(`
+  const [rows] = await pool.query(
+    `
     SELECT
       tp.*,
       p.name AS promotion_name,
@@ -80,19 +102,26 @@ const findPromotionsByTransactionId = async (transactionId) => {
     LEFT JOIN promotions p ON tp.promotion_id = p.id
     LEFT JOIN vouchers v ON tp.voucher_id = v.id
     WHERE tp.transaction_id = ?
-  `, [transactionId]);
+  `,
+    [transactionId],
+  );
   return rows;
 };
 
-const findFreeItemsByTransactionPromotionId = async (transactionPromotionId) => {
-  const [rows] = await pool.query(`
+const findFreeItemsByTransactionPromotionId = async (
+  transactionPromotionId,
+) => {
+  const [rows] = await pool.query(
+    `
     SELECT
       fir.*,
       pv.name AS variant_name
     FROM free_item_rewards fir
     LEFT JOIN product_variants pv ON fir.product_variant_id = pv.id
     WHERE fir.transaction_promotion_id = ?
-  `, [transactionPromotionId]);
+  `,
+    [transactionPromotionId],
+  );
   return rows;
 };
 

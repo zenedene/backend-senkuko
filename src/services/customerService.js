@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import customerModel from "../models/customerModel.js";
 
-const VALID_MEMBER_TYPES = ["regular", "member", "vip"];
 const VALID_STATUSES = ["active", "inactive"];
 
 const getAllCustomers = async () => {
@@ -16,12 +15,6 @@ const getCustomerById = async (id) => {
 
 const createCustomer = async (data) => {
   if (!data.name) throw new Error("Customer name is required");
-
-  if (data.member_type && !VALID_MEMBER_TYPES.includes(data.member_type)) {
-    throw new Error(
-      `Invalid member type. Valid values are: ${VALID_MEMBER_TYPES.join(", ")}`,
-    );
-  }
 
   if (data.phone) {
     const existingPhone = await customerModel.findByPhone(data.phone);
@@ -41,12 +34,6 @@ const updateCustomer = async (id, data) => {
   if (!existing) throw new Error("Customer not found");
 
   if (!data.name) throw new Error("Customer name is required");
-
-  if (data.member_type && !VALID_MEMBER_TYPES.includes(data.member_type)) {
-    throw new Error(
-      `Invalid member type. Valid values are: ${VALID_MEMBER_TYPES.join(", ")}`,
-    );
-  }
 
   if (data.phone && data.phone !== existing.phone) {
     const existingPhone = await customerModel.findByPhone(data.phone);
@@ -94,7 +81,7 @@ const getCustomersByStatus = async (status) => {
 };
 
 export default {
- getAllCustomers,
+  getAllCustomers,
   getCustomerById,
   createCustomer,
   updateCustomer,
