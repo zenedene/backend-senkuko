@@ -73,6 +73,30 @@ const findAll = async () => {
   return rows;
 };
 
+const findByCustomerId = async (customerId) => {
+  const [rows] = await pool.query(
+    `
+    SELECT
+      t.id,
+      t.invoice_number,
+      t.status,
+      t.subtotal,
+      t.total_discount,
+      t.grand_total,
+      t.paid_amount,
+      t.change_amount,
+      t.payment_method,
+      t.transacted_at,
+      t.created_at
+    FROM transactions t
+    WHERE t.customer_id = ?
+    ORDER BY t.created_at DESC
+  `,
+    [customerId],
+  );
+  return rows;
+};
+
 const findItemsByTransactionId = async (transactionId) => {
   const [rows] = await pool.query(
     `
@@ -128,6 +152,7 @@ const findFreeItemsByTransactionPromotionId = async (
 export default {
   findById,
   findAll,
+  findByCustomerId,
   findItemsByTransactionId,
   findPromotionsByTransactionId,
   findFreeItemsByTransactionPromotionId,

@@ -24,18 +24,15 @@ const login = async (data) => {
     code: user.code,
     name: user.name,
     role: "customer",
+    customer_group: user.customer_group ?? null,
     status: user.status,
   });
 
   return {
     token,
     user: {
-      id: user.id,
-      code: user.code,
-      name: user.name,
-      status: user.status,
-      created_at: user.created_at,
-      role: "customer",
+      ...user,
+      customer_group: user.customer_group ?? null,
     },
   };
 };
@@ -59,7 +56,7 @@ const getProfile = async (id, role = "customer") => {
   if (!user) throw new Error("User not found");
   return {
     ...user,
-    role: "customer",
+    customer_group: user.customer_group ?? null,
   };
 };
 

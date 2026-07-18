@@ -21,6 +21,15 @@ const findAll = async () => {
     FROM product_images
   `);
 
+  const [stocks] = await pool.query(`
+    SELECT
+      product_id,
+      COALESCE(stock_qty, 0) AS total_stock
+    FROM product_variants
+    WHERE is_active = true
+      AND is_base_unit = true
+  `);
+
   return products.map((product) => {
     const productImages = images
       .filter((img) => img.product_id === product.id)
@@ -29,12 +38,16 @@ const findAll = async () => {
         is_primary: !!img.is_primary,
       }));
 
+    const stockRow = stocks.find((s) => s.product_id === product.id);
+
     return {
       ...product,
       images: productImages,
+      total_stock: stockRow ? Number(stockRow.total_stock) : 0,
     };
   });
 };
+
 const findById = async (id) => {
   const [rows] = await pool.query(
     `
@@ -68,14 +81,27 @@ const findById = async (id) => {
     [id],
   );
 
+  const [stockRows] = await pool.query(
+    `
+    SELECT COALESCE(stock_qty, 0) AS total_stock
+    FROM product_variants
+    WHERE product_id = ? AND is_active = true AND is_base_unit = true
+    ORDER BY created_at ASC
+    LIMIT 1
+  `,
+    [id],
+  );
+
   return {
     ...product,
     images: images.map((img) => ({
       url: img.image_url,
       is_primary: !!img.is_primary,
     })),
+    total_stock: Number(stockRows[0]?.total_stock ?? 0),
   };
 };
+
 const findVariantsByProductId = async (productId) => {
   const [rows] = await pool.query(
     `

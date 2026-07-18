@@ -1,7 +1,21 @@
 import productService from "../services/productService.js";
+import authService from "../auth/authService.js";
+import priceListModel from "../models/priceListModel.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 import { v4 as uuidv4 } from "uuid";
 import pool from "../config/database.js";
+
+const CUSTOMER_GROUP_PRICE_LIST_CODE = {
+  GENERAL: "NORMAL",
+  MEMBER: "MEMBER",
+  GROSIR: "GROSIR",
+};
+
+const getPriceListCodeFromCustomerGroup = (customerGroup) => {
+  if (!customerGroup) return null;
+  const normalized = customerGroup.trim().toUpperCase();
+  return CUSTOMER_GROUP_PRICE_LIST_CODE[normalized] ?? normalized;
+};
 
 const getAll = async (req, res) => {
   try {
@@ -14,9 +28,29 @@ const getAll = async (req, res) => {
 
 const getWithVariantsAndPrice = async (req, res) => {
   try {
+    let priceListId = req.query.price_list_id;
+
+    if (!priceListId && req.headers.authorization?.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.split(" ")[1];
+        const user = authService.verifyToken(token);
+        if (user.role === "customer" && user.customer_group) {
+          const priceListCode = getPriceListCodeFromCustomerGroup(
+            user.customer_group,
+          );
+          const priceList = await priceListModel.findByCode(priceListCode);
+          if (priceList) {
+            priceListId = priceList.id;
+          }
+        }
+      } catch (_err) {
+        // ignore invalid token and let service return error if no price_list_id
+      }
+    }
+
     const data = await productService.getProductWithVariantsAndPrice(
       req.params.id,
-      req.query.price_list_id,
+      priceListId,
     );
     res.json({ success: true, data });
   } catch (err) {

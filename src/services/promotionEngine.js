@@ -4,6 +4,8 @@ import promotionModel from "../models/promotionModel.js";
  * Evaluasi apakah semua conditions dari sebuah promo terpenuhi
  */
 const evaluateConditions = (conditions, context) => {
+  if (!conditions || conditions.length === 0) return true;
+
   for (const condition of conditions) {
     const { condition_type, operator, value, target_type, target_id } =
       condition;
@@ -23,15 +25,19 @@ const evaluateConditions = (conditions, context) => {
       );
       if (!found) return false;
       continue;
+    } else {
+      continue;
     }
 
     const numericValue = parseFloat(value);
 
-    if (operator === "gte" && !(actual >= numericValue)) return false;
-    if (operator === "lte" && !(actual <= numericValue)) return false;
-    if (operator === "eq" && actual !== value) return false;
+    if (operator === "gte" && !(Number(actual) >= numericValue)) return false;
+    if (operator === "lte" && !(Number(actual) <= numericValue)) return false;
+    if (operator === "eq" && String(actual) !== String(value)) return false;
     if (operator === "in") {
-      const list = value.split(",").map((v) => v.trim());
+      const list = String(value)
+        .split(",")
+        .map((v) => v.trim());
       if (!list.includes(String(actual))) return false;
     }
   }
@@ -108,7 +114,10 @@ const applyPromotions = async (promoCodes, voucherCodes, context) => {
   let hasNonStackable = false;
   let nonStackablePromotion = null;
 
-  const allRequestedCodes = [...(promoCodes || []), ...(voucherCodes || [])];
+  const allRequestedCodes = [
+    ...(Array.isArray(promoCodes) ? promoCodes : []),
+    ...(Array.isArray(voucherCodes) ? voucherCodes : []),
+  ].filter(Boolean);
 
   for (const code of allRequestedCodes) {
     let promotion = null;
@@ -131,14 +140,25 @@ const applyPromotions = async (promoCodes, voucherCodes, context) => {
     }
 
     if (!promotion) continue;
-    if (!promotion.is_active) continue;
-    if (promotion.valid_from && new Date(promotion.valid_from) > now) continue;
-    if (promotion.valid_to && new Date(promotion.valid_to) < now) continue;
-    if (
-      promotion.usage_limit > 0 &&
-      promotion.usage_count >= promotion.usage_limit
-    )
-      continue;
+    const isPromotionActive =
+      promotion.is_active === true || promotion.is_active === 1;
+    if (!isPromotionActive) continue;
+
+    const validFrom = promotion.valid_from
+      ? new Date(promotion.valid_from)
+      : null;
+    const validTo = promotion.valid_to ? new Date(promotion.valid_to) : null;
+
+    if (validFrom && validFrom > now) continue;
+    if (validTo && validTo < now) continue;
+
+    const usageLimit = Number(
+      promotion.usage_limit ?? promotion.promotion_usage_limit ?? 0,
+    );
+    const usageCount = Number(
+      promotion.usage_count ?? promotion.promotion_usage_count ?? 0,
+    );
+    if (usageLimit > 0 && usageCount >= usageLimit) continue;
 
     const conditions = await promotionModel.findConditionsByPromotionId(
       promotion.id,
@@ -148,15 +168,20 @@ const applyPromotions = async (promoCodes, voucherCodes, context) => {
 
     const rewards = await promotionModel.findRewardsByPromotionId(promotion.id);
 
+    const isStackable =
+      promotion.stackable === true ||
+      promotion.stackable === 1 ||
+      promotion.stackable === "1";
+
     // Handle stackable logic
-    if (!promotion.stackable) {
+    if (!isStackable) {
       if (hasNonStackable) continue; // sudah ada non-stackable, skip
       hasNonStackable = true;
-      nonStackablePromotion = { promotion, rewards, voucherId };
+      nonStackablePromotion = { promotion, rewards, voucherId, code };
       continue;
     }
 
-    appliedPromotions.push({ promotion, rewards, voucherId });
+    appliedPromotions.push({ promotion, rewards, voucherId, code });
   }
 
   // Masukkan non-stackable jika ada (yang created_at paling lama sudah dihandle
