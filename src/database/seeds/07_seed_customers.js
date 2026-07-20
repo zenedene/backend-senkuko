@@ -1,13 +1,9 @@
 // 06_customers_transactions.js
 import { v4 as uuidv4 } from "uuid";
-import bcrypt from "bcryptjs";
 
 export async function seed(knex) {
-  // Remove old data first
   await knex("transactions").del();
   await knex("customers").del();
-
-  const passwordHash = await bcrypt.hash("password123", 10);
 
   await knex("customers").insert([
     {
@@ -16,9 +12,13 @@ export async function seed(knex) {
       name: "Budi Santoso",
       phone: "081234567890",
       email: "budi@email.com",
-      password: passwordHash,
       total_spend: 0,
       status: "active",
+      address: "Jl. Merdeka No. 10",
+      city: "Jakarta Pusat",
+      region: "DKI Jakarta",
+      subregion: "Gambir",
+      customer_group: "General",
       created_at: new Date(),
     },
     {
@@ -27,9 +27,13 @@ export async function seed(knex) {
       name: "Siti Aminah",
       phone: "082345678901",
       email: "siti@email.com",
-      password: passwordHash,
       total_spend: 0,
       status: "active",
+      address: "Jl. Diponegoro No. 25",
+      city: "Bandung",
+      region: "Jawa Barat",
+      subregion: "Coblong",
+      customer_group: "Member",
       created_at: new Date(),
     },
     {
@@ -38,9 +42,13 @@ export async function seed(knex) {
       name: "Agus Wijaya",
       phone: "083456789012",
       email: null,
-      password: passwordHash,
       total_spend: 0,
       status: "active",
+      address: "Perumahan Griya Asri Blok A3",
+      city: "Surabaya",
+      region: "Jawa Timur",
+      subregion: "Wonokromo",
+      customer_group: "General",
       created_at: new Date(),
     },
     {
@@ -49,9 +57,13 @@ export async function seed(knex) {
       name: "Dewi Kusuma",
       phone: "084567890123",
       email: "dewi@email.com",
-      password: passwordHash,
       total_spend: 0,
       status: "active",
+      address: "Jl. Veteran No. 88",
+      city: "Yogyakarta",
+      region: "DI Yogyakarta",
+      subregion: "Gondokusuman",
+      customer_group: "Member",
       created_at: new Date(),
     },
     {
@@ -60,9 +72,13 @@ export async function seed(knex) {
       name: "Rudi Hermawan",
       phone: null,
       email: null,
-      password: null,
       total_spend: 0,
       status: "inactive",
+      address: null,
+      city: null,
+      region: null,
+      subregion: null,
+      customer_group: "General",
       created_at: new Date(),
     },
   ]);

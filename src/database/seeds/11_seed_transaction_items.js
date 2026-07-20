@@ -15,7 +15,7 @@ export async function seed(knex) {
   const getPriceListId = code => priceLists.find(p => p.code === code)?.id;
 
   await knex('transaction_items').insert([
-    // INV-20260701-001 (Budi) - Aqua 600ml 2pcs + Teh Botol 1pcs
+    // INV-20260701-001 (Budi) - Aqua 2x@4000 + Teh Botol 1x@5000 = 13000
     {
       id: uuidv4(),
       transaction_id: getTxnId('INV-20260701-001'),
@@ -24,8 +24,8 @@ export async function seed(knex) {
       qty: 2,
       unit_price: 4000,
       original_price: 4000,
-      discount_amount: 400,
-      subtotal: 7600,
+      discount_amount: 0,
+      subtotal: 8000,
     },
     {
       id: uuidv4(),
@@ -35,11 +35,11 @@ export async function seed(knex) {
       qty: 1,
       unit_price: 5000,
       original_price: 5000,
-      discount_amount: 500,
-      subtotal: 4500,
+      discount_amount: 0,
+      subtotal: 5000,
     },
 
-    // INV-20260701-002 (Siti) - Indomie Goreng 5pcs + Chitato 2pcs
+    // INV-20260701-002 (Siti) - Indomie 5x@3500 + Chitato 2x@12000 = 41500
     {
       id: uuidv4(),
       transaction_id: getTxnId('INV-20260701-002'),
@@ -63,7 +63,7 @@ export async function seed(knex) {
       subtotal: 24000,
     },
 
-    // INV-20260701-003 (Walk-in) - Kopi Kapal Api 3pcs + Aqua 600ml 2pcs
+    // INV-20260701-003 (Walk-in) - Kopi 3x@2000 + Aqua 2x@4000 = 14000
     {
       id: uuidv4(),
       transaction_id: getTxnId('INV-20260701-003'),
@@ -72,8 +72,8 @@ export async function seed(knex) {
       qty: 3,
       unit_price: 2000,
       original_price: 2000,
-      discount_amount: 600,
-      subtotal: 5400,
+      discount_amount: 0,
+      subtotal: 6000,
     },
     {
       id: uuidv4(),
@@ -83,11 +83,11 @@ export async function seed(knex) {
       qty: 2,
       unit_price: 4000,
       original_price: 4000,
-      discount_amount: 800,
-      subtotal: 7200,
+      discount_amount: 0,
+      subtotal: 8000,
     },
 
-    // INV-20260702-001 (Agus - pending) - Indomie Box 2 + Aqua Box 1
+    // INV-20260702-001 (Agus - pending) - Indomie Box 2x@125000 + Aqua Box 1x@82000 = 332000
     {
       id: uuidv4(),
       transaction_id: getTxnId('INV-20260702-001'),
@@ -111,7 +111,7 @@ export async function seed(knex) {
       subtotal: 82000,
     },
 
-    // INV-20260702-002 (Dewi - cancelled) - Teh Botol 3pcs + Kopi 5pcs
+    // INV-20260702-002 (Dewi - cancelled) - Teh Botol 3x@4500 + Kopi 5x@1700 = 22000
     {
       id: uuidv4(),
       transaction_id: getTxnId('INV-20260702-002'),
