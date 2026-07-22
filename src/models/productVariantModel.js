@@ -8,6 +8,7 @@ const findAll = async () => {
       pv.barcode,
       pv.stock_qty,
       pv.min_stock_qty,
+      pv.crisis_stock,
       pv.conversion_factor,
       pv.is_base_unit,
       pv.is_active,
@@ -33,6 +34,7 @@ const findById = async (id) => {
       pv.barcode,
       pv.stock_qty,
       pv.min_stock_qty,
+      pv.crisis_stock,
       pv.conversion_factor,
       pv.is_base_unit,
       pv.is_active,
@@ -58,6 +60,7 @@ const findByProductId = async (productId) => {
       pv.barcode,
       pv.stock_qty,
       pv.min_stock_qty,
+      pv.crisis_stock,
       pv.conversion_factor,
       pv.is_base_unit,
       pv.is_active,
@@ -83,21 +86,21 @@ const countByProductId = async (productId) => {
 };
 
 const create = async (data) => {
-  const { id, product_id, unit_id, name, barcode, stock_qty, min_stock_qty, conversion_factor, is_base_unit, is_active } = data;
+  const { id, product_id, unit_id, name, barcode, stock_qty, min_stock_qty, crisis_stock, conversion_factor, is_base_unit, is_active } = data;
   await pool.query(`
-    INSERT INTO product_variants (id, product_id, unit_id, name, barcode, stock_qty, min_stock_qty, conversion_factor, is_base_unit, is_active, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-  `, [id, product_id, unit_id, name, barcode ?? null, stock_qty ?? 0, min_stock_qty ?? 0, conversion_factor ?? 1, is_base_unit ?? false, is_active ?? true]);
+    INSERT INTO product_variants (id, product_id, unit_id, name, barcode, stock_qty, min_stock_qty, crisis_stock, conversion_factor, is_base_unit, is_active, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+  `, [id, product_id, unit_id, name, barcode ?? null, stock_qty ?? 0, min_stock_qty ?? 0, crisis_stock ?? 0, conversion_factor ?? 1, is_base_unit ?? false, is_active ?? true]);
   return findById(id);
 };
 
 const update = async (id, data) => {
-  const { unit_id, name, barcode, stock_qty, min_stock_qty, conversion_factor, is_base_unit, is_active } = data;
+  const { unit_id, name, barcode, stock_qty, min_stock_qty, crisis_stock, conversion_factor, is_base_unit, is_active } = data;
   await pool.query(`
     UPDATE product_variants
-    SET unit_id = ?, name = ?, barcode = ?, stock_qty = ?, min_stock_qty = ?, conversion_factor = ?, is_base_unit = ?, is_active = ?
+    SET unit_id = ?, name = ?, barcode = ?, stock_qty = ?, min_stock_qty = ?, crisis_stock = ?, conversion_factor = ?, is_base_unit = ?, is_active = ?
     WHERE id = ?
-  `, [unit_id, name, barcode ?? null, stock_qty ?? 0, min_stock_qty ?? 0, conversion_factor ?? 1, is_base_unit ?? false, is_active, id]);
+  `, [unit_id, name, barcode ?? null, stock_qty ?? 0, min_stock_qty ?? 0, crisis_stock ?? 0, conversion_factor ?? 1, is_base_unit ?? false, is_active, id]);
   return findById(id);
 };
 
