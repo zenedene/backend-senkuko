@@ -680,6 +680,130 @@ const deductStockForTransaction = async (conn, transaction) => {
   return true;
 };
 
+const restoreStockForTransaction = async (conn, transaction) => {
+  const [existingLedgerRows] = await conn.query(
+    `SELECT id FROM stock_ledger WHERE reference_id = ? AND reference_type = 'transaction_cancel' LIMIT 1`,
+    [transaction.id],
+  );
+
+  if (existingLedgerRows.length > 0) {
+    return false;
+  }
+
+  const [items] = await conn.query(
+    `SELECT * FROM transaction_items WHERE transaction_id = ?`,
+    [transaction.id],
+  );
+
+  const stockLedgerEntries = [];
+
+  for (const item of items) {
+    const [variantRows] = await conn.query(
+      `SELECT stock_qty FROM product_variants WHERE id = ?`,
+      [item.product_variant_id],
+    );
+
+    if (variantRows.length === 0) continue;
+
+    const qtyBefore = Number(variantRows[0].stock_qty ?? 0);
+    const qtyToRestore = Number(item.qty || 0);
+    const qtyAfter = qtyBefore + qtyToRestore;
+
+    await conn.query(`UPDATE product_variants SET stock_qty = ? WHERE id = ?`, [
+      qtyAfter,
+      item.product_variant_id,
+    ]);
+
+    stockLedgerEntries.push([
+      uuidv4(),
+      item.product_variant_id,
+      transaction.id,
+      "transaction_cancel",
+      qtyToRestore,
+      qtyBefore,
+      qtyAfter,
+      `Cancel restore - ${transaction.invoice_number}`,
+      new Date(),
+    ]);
+  }
+
+  if (stockLedgerEntries.length > 0) {
+    await conn.query(
+      `INSERT INTO stock_ledger (id, product_variant_id, reference_id, reference_type, qty_change, qty_before, qty_after, note, created_at) VALUES ?`,
+      [stockLedgerEntries],
+    );
+  }
+
+  if (transaction.customer_id) {
+    await conn.query(
+      `UPDATE customers SET total_spend = GREATEST(0, total_spend - ?) WHERE id = ?`,
+      [transaction.grand_total, transaction.customer_id],
+    );
+  }
+
+  const [promoRows] = await conn.query(
+    `SELECT * FROM transaction_promotions WHERE transaction_id = ?`,
+    [transaction.id],
+  );
+
+  for (const tp of promoRows) {
+    await conn.query(
+      `UPDATE promotions SET usage_count = GREATEST(0, usage_count - 1) WHERE id = ?`,
+      [tp.promotion_id],
+    );
+
+    if (tp.voucher_id) {
+      await conn.query(
+        `UPDATE vouchers SET usage_count = GREATEST(0, usage_count - 1), status = 'active' WHERE id = ?`,
+        [tp.voucher_id],
+      );
+    }
+  }
+
+  return true;
+};
+
+const cancelTransaction = async (transactionId, customerId) => {
+  const transaction = await transactionModel.findById(transactionId);
+  if (!transaction) throw new Error("Transaction not found");
+
+  if (transaction.customer_id !== customerId) {
+    throw new Error("Forbidden: This transaction does not belong to you");
+  }
+
+  if (transaction.status !== "pending_payment") {
+    throw new Error(
+      "Only transactions with status pending_payment can be cancelled",
+    );
+  }
+
+  if (transaction.payment_status !== "pending") {
+    throw new Error(
+      "Only transactions with pending payment status can be cancelled",
+    );
+  }
+
+  const conn = await pool.getConnection();
+  await conn.beginTransaction();
+
+  try {
+    await conn.query(
+      `UPDATE transactions SET status = 'cancelled', payment_status = 'cancelled' WHERE id = ?`,
+      [transactionId],
+    );
+
+    await restoreStockForTransaction(conn, transaction);
+
+    await conn.commit();
+    return await transactionModel.findById(transactionId);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+};
+
 // services/transactionService.js
 const handleMidtransWebhook = async (notification) => {
   try {
@@ -916,4 +1040,5 @@ export default {
   handleMidtransWebhook,
   updateTransactionStatus,
   checkAndUpdatePaymentStatus,
+  cancelTransaction,
 };

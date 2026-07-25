@@ -50,6 +50,13 @@ router.get(
 router.get("/:id", authMiddleware, transactionController.getById);
 
 router.patch(
+  "/:id/cancel",
+  authMiddleware,
+  authorizeRole("customer"),
+  transactionController.cancelTransaction,
+);
+
+router.patch(
   "/:id/status",
   authMiddleware,
   authorizeRole("admin"),

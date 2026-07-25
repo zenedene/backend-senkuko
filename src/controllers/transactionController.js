@@ -181,6 +181,21 @@ const updateStatus = async (req, res) => {
   }
 };
 
+const cancelTransaction = async (req, res) => {
+  try {
+    const data = await transactionService.cancelTransaction(
+      req.params.id,
+      req.user.id,
+    );
+    res.json({ success: true, data, message: "Transaction cancelled successfully" });
+  } catch (err) {
+    let status = 400;
+    if (err.message === "Transaction not found") status = 404;
+    else if (err.message.startsWith("Forbidden")) status = 403;
+    res.status(status).json({ success: false, message: err.message });
+  }
+};
+
 export default {
   getAll,
   getHistory,
@@ -189,4 +204,5 @@ export default {
   webhook,
   updateStatus,
   checkPayment,
+  cancelTransaction,
 };
