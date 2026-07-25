@@ -12,6 +12,7 @@ import transactionRoutes from './routes/transactionRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
 import voucherRoutes from './routes/voucherRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import bannerRoutes from './routes/bannerRoutes.js';
 
 const app = express();  
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/vouchers', voucherRoutes);
+app.use('/api/banners', bannerRoutes);
 
 async function testConnection() {
   try {
