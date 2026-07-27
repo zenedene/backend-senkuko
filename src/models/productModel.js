@@ -111,6 +111,7 @@ const findVariantsByProductId = async (productId) => {
       pv.barcode,
       pv.stock_qty,
       pv.min_stock_qty,
+      pv.crisis_stock,
       pv.conversion_factor,
       pv.is_base_unit,
       pv.is_active,
