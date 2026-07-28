@@ -515,6 +515,23 @@ const createTransaction = async (data) => {
 
   // At this point transaction row and related records inserted.
   if (payment_method === "cod") {
+    const stockConn = await pool.getConnection();
+    await stockConn.beginTransaction();
+    try {
+      await deductStockForTransaction(stockConn, {
+        id: transactionId,
+        grand_total: grandTotal,
+        customer_id,
+        invoice_number: invoiceNumber,
+      });
+      await stockConn.commit();
+    } catch (err) {
+      await stockConn.rollback();
+      throw err;
+    } finally {
+      stockConn.release();
+    }
+
     return {
       transaction_id: transactionId,
       invoice_number: invoiceNumber,
