@@ -193,6 +193,16 @@ const adminCancelTransaction = async (req, res) => {
   }
 };
 
+const cancelTransaction = async (req, res) => {
+  try {
+    const data = await transactionService.cancelTransaction(req.params.id, req.user.id);
+    res.json({ success: true, data });
+  } catch (err) {
+    const status = err.message === "Transaction not found" ? 404 : 400;
+    res.status(status).json({ success: false, message: err.message });
+  }
+};
+
 export default {
   getAll,
   getHistory,
