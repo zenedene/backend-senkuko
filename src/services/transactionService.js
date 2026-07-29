@@ -821,6 +821,44 @@ const cancelTransaction = async (transactionId, customerId) => {
   }
 };
 
+// admin cancel without ownership check
+const adminCancelTransaction = async (transactionId) => {
+  const transaction = await transactionModel.findById(transactionId);
+  if (!transaction) throw new Error("Transaction not found");
+
+  if (transaction.status !== "pending_payment") {
+    throw new Error(
+      "Only transactions with status pending_payment can be cancelled",
+    );
+  }
+
+  if (transaction.payment_status !== "pending") {
+    throw new Error(
+      "Only transactions with pending payment status can be cancelled",
+    );
+  }
+
+  const conn = await pool.getConnection();
+  await conn.beginTransaction();
+
+  try {
+    await conn.query(
+      `UPDATE transactions SET status = 'cancelled', payment_status = 'cancelled' WHERE id = ?`,
+      [transactionId],
+    );
+
+    await restoreStockForTransaction(conn, transaction);
+
+    await conn.commit();
+    return await transactionModel.findById(transactionId);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+};
+
 // services/transactionService.js
 const handleMidtransWebhook = async (notification) => {
   try {
@@ -1058,4 +1096,5 @@ export default {
   updateTransactionStatus,
   checkAndUpdatePaymentStatus,
   cancelTransaction,
+  adminCancelTransaction,
 };

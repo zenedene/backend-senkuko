@@ -57,10 +57,10 @@ router.patch(
 );
 
 router.patch(
-  "/:id/status",
+  "/:id/admin-cancel",
   authMiddleware,
   authorizeRole("admin"),
-  transactionController.updateStatus,
+  transactionController.adminCancelTransaction,
 );
 
 export default router;

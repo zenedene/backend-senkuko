@@ -181,13 +181,10 @@ const updateStatus = async (req, res) => {
   }
 };
 
-const cancelTransaction = async (req, res) => {
+const adminCancelTransaction = async (req, res) => {
   try {
-    const data = await transactionService.cancelTransaction(
-      req.params.id,
-      req.user.id,
-    );
-    res.json({ success: true, data, message: "Transaction cancelled successfully" });
+    const data = await transactionService.adminCancelTransaction(req.params.id);
+    res.json({ success: true, data, message: "Transaction cancelled by admin" });
   } catch (err) {
     let status = 400;
     if (err.message === "Transaction not found") status = 404;
@@ -205,4 +202,5 @@ export default {
   updateStatus,
   checkPayment,
   cancelTransaction,
+  adminCancelTransaction,
 };
