@@ -198,7 +198,9 @@ const cancelTransaction = async (req, res) => {
     const data = await transactionService.cancelTransaction(req.params.id, req.user.id);
     res.json({ success: true, data });
   } catch (err) {
-    const status = err.message === "Transaction not found" ? 404 : 400;
+    let status = 400;
+    if (err.message === "Transaction not found") status = 404;
+    else if (err.message.startsWith("Forbidden")) status = 403;
     res.status(status).json({ success: false, message: err.message });
   }
 };
