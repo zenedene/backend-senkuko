@@ -63,4 +63,11 @@ router.patch(
   transactionController.adminCancelTransaction,
 );
 
+router.patch(
+  "/:id/payment-status",
+  authMiddleware,
+  authorizeRole("admin"),
+  transactionController.updatePaymentStatus,
+);
+
 export default router;

@@ -72,7 +72,22 @@ const normalizePromoPayload = (payload) => {
       if (value.code) target.push(String(value.code).trim());
       if (value.value) target.push(String(value.value).trim());
     }
-  };
+};
+const updatePaymentStatus = async (req, res) => {
+  try {
+    const { payment_status } = req.body;
+    const data = await transactionService.updatePaymentStatus(
+      req.params.id,
+      payment_status
+    );
+    res.json({ success: true, data });
+  } catch (err) {
+    let status = 400;
+    if (err.message === "Transaction not found") status = 404;
+    else if (err.message.startsWith("Invalid payment_status")) status = 400;
+    res.status(status).json({ success: false, message: err.message });
+  }
+};
 
   if (payload.promo_codes) pushCodes(payload.promo_codes, promoCodes);
   if (payload.voucher_codes) pushCodes(payload.voucher_codes, voucherCodes);
@@ -213,6 +228,7 @@ export default {
   webhook,
   updateStatus,
   checkPayment,
+  updatePaymentStatus,
   cancelTransaction,
   adminCancelTransaction,
 };

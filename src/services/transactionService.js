@@ -1087,6 +1087,46 @@ const checkAndUpdatePaymentStatus = async (transactionId) => {
   return transaction;
 };
 
+const updatePaymentStatus = async (id, payment_status) => {
+  const VALID_PAYMENT_STATUSES = ["pending", "paid", "failed", "cancelled"];
+
+  if (!VALID_PAYMENT_STATUSES.includes(payment_status)) {
+    throw new Error(
+      `Invalid payment_status. Valid values: ${VALID_PAYMENT_STATUSES.join(", ")}`,
+    );
+  }
+
+  const transaction = await transactionModel.findById(id);
+  if (!transaction) throw new Error("Transaction not found");
+
+  const conn = await pool.getConnection();
+  await conn.beginTransaction();
+
+  try {
+    await conn.query(
+      `UPDATE transactions SET payment_status = ? WHERE id = ?`,
+      [payment_status, id],
+    );
+
+    // Optionally, if payment_status is paid, you might want to update status to processing?
+    // But we leave that to updateTransactionStatus. For safety, if paid and status is pending_payment, set to processing?
+    if (payment_status === "paid" && transaction.status === "pending_payment") {
+      await conn.query(
+        `UPDATE transactions SET status = 'processing' WHERE id = ?`,
+        [id],
+      );
+    }
+
+    await conn.commit();
+    return transactionModel.findById(id);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+};
+
 export default {
   createTransaction,
   getTransactionById,
@@ -1095,6 +1135,7 @@ export default {
   handleMidtransWebhook,
   updateTransactionStatus,
   checkAndUpdatePaymentStatus,
+  updatePaymentStatus,
   cancelTransaction,
   adminCancelTransaction,
 };
