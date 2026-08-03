@@ -70,4 +70,12 @@ router.patch(
   transactionController.updatePaymentStatus,
 );
 
+// ✅ ADMIN UPDATE TRANSACTION STATUS
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  authorizeRole("admin"),
+  transactionController.updateStatus,
+);
+
 export default router;
