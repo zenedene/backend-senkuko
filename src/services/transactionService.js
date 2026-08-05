@@ -1080,7 +1080,13 @@ const checkAndUpdatePaymentStatus = async (transactionId) => {
       return await transactionModel.findById(transactionId);
     }
   } catch (err) {
-    console.error("Midtrans status check error:", err.message);
+    if (err.httpStatusCode === 404) {
+      console.warn(
+        `Midtrans 404: transaction not found in Midtrans, skipping: ${transaction.midtrans_order_id}`,
+      );
+    } else {
+      console.error("Midtrans status check error:", err.message);
+    }
     // Jangan throw — return status dari DB saja
   }
 

@@ -50,6 +50,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/promotions', promotionRoutes);
+app.use('/api/banners', bannerRoutes);
 app.use('/api/vouchers', voucherRoutes);
 // Global error handler (no stack trace in production)
 app.use((err, _req, res, _next) => {
