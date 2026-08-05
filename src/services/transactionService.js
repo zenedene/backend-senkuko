@@ -245,6 +245,7 @@ const createTransaction = async (data) => {
         variantId: freeItem.variantId,
         qty: freeItem.qty,
         actualUnitPrice,
+        name: freeVariant.name,
         promotionId,
       });
     } catch (e) {
@@ -545,18 +546,49 @@ const createTransaction = async (data) => {
     };
   }
 
-  // Request Snap Token ke Midtrans
+  // Request Snap Token ke Midtrans.
+  // PENTING: total item_details harus SAMA dengan gross_amount (sudah termasuk
+  // potongan promo/voucher), jika tidak Midtrans akan menolak/menagih harga penuh.
+  const midtransItemDetails = validatedItems.map((item) => ({
+    id: item.product_variant_id,
+    price: Math.round(item.unit_price),
+    quantity: item.qty,
+    name: item.variant_name,
+  }));
+
+  for (const freeRow of freeItemsToInsert) {
+    midtransItemDetails.push({
+      id: freeRow.variantId,
+      price: 0,
+      quantity: freeRow.qty,
+      name: `GRATIS - ${freeRow.name || freeRow.variantId}`,
+    });
+  }
+
+  const grossAmount = Math.round(grandTotal);
+  const itemDetailsTotal = midtransItemDetails.reduce(
+    (sum, i) => sum + i.price * i.quantity,
+    0,
+  );
+
+  // Tambahkan item "Diskon" bernilai negatif agar total item_details
+  // persis sama dengan gross_amount (sesuai ketentuan Midtrans).
+  const discountLineAmount = grossAmount - itemDetailsTotal;
+  if (discountLineAmount !== 0) {
+    midtransItemDetails.push({
+      id: "DISCOUNT",
+      price: discountLineAmount,
+      quantity: 1,
+      name: "Diskon Promo",
+    });
+  }
+
   const midtransPayload = {
     transaction_details: {
       order_id: midtransOrderId,
-      gross_amount: Math.round(grandTotal),
+      gross_amount: grossAmount,
     },
-    item_details: validatedItems.map((item) => ({
-      id: item.product_variant_id,
-      price: Math.round(item.unit_price),
-      quantity: item.qty,
-      name: item.variant_name,
-    })),
+    item_details: midtransItemDetails,
     customer_details: customer
       ? {
           first_name: customer.name,
