@@ -1,7 +1,8 @@
+import { body, validationResult } from "express-validator";
 import express from "express";
 import authMiddleware, { authorizeRole } from "../auth/authMiddleware.js";
-const router = express.Router();
 import categoryController from "../controllers/categoryController.js";
+const router = express.Router();
 
 router.get("/", categoryController.getAll);
 router.get("/:id", categoryController.getById);
@@ -10,13 +11,31 @@ router.post(
   "/",
   authMiddleware,
   authorizeRole("admin"),
-  categoryController.create,
+  body("name").isString().notEmpty(),
+  body("slug").isString().notEmpty(),
+  body("parent_id").optional().isUUID(),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: "Invalid input", errors: errors.array() });
+    }
+    return categoryController.create(req, res);
+  }
 );
 router.put(
   "/:id",
   authMiddleware,
   authorizeRole("admin"),
-  categoryController.update,
+  body("name").optional().isString(),
+  body("slug").optional().isString(),
+  body("parent_id").optional().isUUID(),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: "Invalid input", errors: errors.array() });
+    }
+    return categoryController.update(req, res);
+  }
 );
 router.delete(
   "/:id",

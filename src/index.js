@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import express from "express";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 import pool from "./config/database.js";
 import productRoutes from "./routes/productRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
@@ -17,7 +20,25 @@ import bannerRoutes from './routes/bannerRoutes.js';
 const app = express();  
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
+
+// CORS whitelist (replace with your frontend origin)
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    credentials: true,
+  }),
+);
+
+// Rate limiter for auth routes (10 requests per minute per IP)
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { success: false, message: "Too many requests, try again later" },
+});
+app.use("/api/auth", authLimiter);
+
 
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -30,7 +51,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/vouchers', voucherRoutes);
-app.use('/api/banners', bannerRoutes);
+// Global error handler (no stack trace in production)
+app.use((err, _req, res, _next) => {
+  const status = err.status || 500;
+  const response = { success: false, message: err.message || 'Internal Server Error' };
+  // In development, include stack for debugging
+  if (process.env.NODE_ENV === 'development' && err.stack) {
+    response.stack = err.stack;
+  }
+  res.status(status).json(response);
+});
 
 async function testConnection() {
   try {
@@ -49,4 +79,7 @@ async function start() {
   });
 }
 
-start();
+if (process.env.NODE_ENV !== 'test') {
+  start();
+}
+

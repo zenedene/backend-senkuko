@@ -1,3 +1,4 @@
+import { body, validationResult } from "express-validator";
 import express from "express";
 import authMiddleware, { authorizeRole } from "../auth/authMiddleware.js";
 import priceListController from "../controllers/priceListController.js";
@@ -9,13 +10,31 @@ router.post(
   "/",
   authMiddleware,
   authorizeRole("admin"),
-  priceListController.create,
+  body("name").isString().notEmpty(),
+  body("code").isString().notEmpty(),
+  body("is_active").optional().isBoolean(),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: "Invalid input", errors: errors.array() });
+    }
+    return priceListController.create(req, res);
+  }
 );
 router.put(
   "/:id",
   authMiddleware,
   authorizeRole("admin"),
-  priceListController.update,
+  body("name").optional().isString(),
+  body("code").optional().isString(),
+  body("is_active").optional().isBoolean(),
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: "Invalid input", errors: errors.array() });
+    }
+    return priceListController.update(req, res);
+  }
 );
 router.delete(
   "/:id",

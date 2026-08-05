@@ -1,5 +1,5 @@
+import { query, validationResult } from "express-validator";
 import transactionService from "../services/transactionService.js";
-import priceListModel from "../models/priceListModel.js";
 
 const CUSTOMER_GROUP_PRICE_LIST_CODE = {
   GENERAL: "NORMAL",
@@ -220,10 +220,34 @@ const cancelTransaction = async (req, res) => {
   }
 };
 
+const getSummary = async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const data = await transactionService.getTransactionSummary(start, end, req.user);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const exportTx = async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const offset = parseInt(req.query.offset, 10) || 0;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+    const data = await transactionService.exportTransactions(start, end, offset, limit, req.user);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 export default {
   getAll,
   getHistory,
   getById,
+  getSummary,
+  exportTx,
   create,
   webhook,
   updateStatus,

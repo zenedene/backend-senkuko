@@ -1127,6 +1127,110 @@ const updatePaymentStatus = async (id, payment_status) => {
   }
 };
 
+// New summary function
+export const getTransactionSummary = async (start, end, user) => {
+  const endOfDay = `${end} 23:59:59`;
+
+  const where = ["t.created_at BETWEEN ? AND ?"];
+  const params = [start, endOfDay];
+
+  if (user && user.role === 'customer') {
+    where.push("t.customer_id = ?");
+    params.push(user.id);
+  }
+
+  const sql = `
+    SELECT COUNT(DISTINCT t.id) AS total_transactions,
+           COALESCE(SUM(ti.qty), 0) AS total_items_ordered
+    FROM transactions t
+    LEFT JOIN transaction_items ti ON t.id = ti.transaction_id
+    WHERE ${where.join(" AND ")}
+  `;
+
+  console.log('SUMMARY QUERY:', sql.trim());
+
+  const [rows] = await pool.query(sql, params);
+
+  return {
+    total_transactions: Number(rows[0].total_transactions || 0),
+    total_items_ordered: Number(rows[0].total_items_ordered || 0),
+  };
+};
+
+// New export function with pagination (offset, limit)
+export const exportTransactions = async (start, end, offset = 0, limit = 100, user) => {
+  const endOfDay = `${end} 23:59:59`;
+
+  const where = ["t.created_at BETWEEN ? AND ?"];
+  const params = [start, endOfDay];
+
+  if (user && user.role === 'customer') {
+    where.push("t.customer_id = ?");
+    params.push(user.id);
+  }
+
+  const whereSql = where.join(" AND ");
+
+  // Header query with pagination
+  const headerSql = `
+    SELECT t.id, t.invoice_number, t.status, t.subtotal, t.grand_total
+    FROM transactions t
+    WHERE ${whereSql}
+    ORDER BY t.created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+  const headerParams = [...params, limit, offset];
+
+  console.log('EXPORT HEADER QUERY:', headerSql.trim(), headerParams);
+  const [transactions] = await pool.query(headerSql, headerParams);
+
+  // Total count for pagination meta (inclusive end) - always run
+  const countSql = `SELECT COUNT(*) AS total FROM transactions t WHERE ${whereSql}`;
+  console.log('EXPORT COUNT QUERY:', countSql.trim(), params);
+  const [[{ total }]] = await pool.query(countSql, params);
+
+  if (!transactions.length) {
+    return {
+      data: [],
+      meta: { total: Number(total), offset, limit, has_more: offset + limit < total },
+    };
+  }
+
+  const transactionIds = transactions.map(tr => tr.id);
+
+  // Items query (single)
+  const placeholders = transactionIds.map(() => '?').join(',');
+  const itemsSql = `
+    SELECT ti.transaction_id, ti.product_variant_id, pv.product_id,
+           p.name AS product_name, ti.qty, ti.unit_price
+    FROM transaction_items ti
+    LEFT JOIN product_variants pv ON ti.product_variant_id = pv.id
+    LEFT JOIN products p ON pv.product_id = p.id
+    WHERE ti.transaction_id IN (${placeholders})
+  `;
+
+  console.log('EXPORT ITEMS QUERY:', itemsSql.trim(), transactionIds);
+  const [items] = await pool.query(itemsSql, transactionIds);
+
+  const itemsByTx = items.reduce((acc, cur) => {
+    if (!acc[cur.transaction_id]) acc[cur.transaction_id] = [];
+    if (cur.product_id) {
+      acc[cur.transaction_id].push({
+        product_id: cur.product_id,
+        product_name: cur.product_name,
+        qty: cur.qty,
+        price: Number(cur.unit_price),
+      });
+    }
+    return acc;
+  }, {});
+
+  return {
+    data: transactions.map(tx => ({ ...tx, items: itemsByTx[tx.id] || [] })),
+    meta: { total: Number(total), offset, limit, has_more: offset + limit < total },
+  };
+};
+
 export default {
   createTransaction,
   getTransactionById,
@@ -1138,4 +1242,6 @@ export default {
   updatePaymentStatus,
   cancelTransaction,
   adminCancelTransaction,
+  getTransactionSummary,
+  exportTransactions,
 };
