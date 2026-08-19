@@ -1,5 +1,6 @@
 import { query, validationResult } from "express-validator";
 import transactionService from "../services/transactionService.js";
+import priceListModel from "../models/priceListModel.js";
 
 const CUSTOMER_GROUP_PRICE_LIST_CODE = {
   GENERAL: "NORMAL",

@@ -5,6 +5,7 @@ import productVariantModel from "../models/productVariantModel.js";
 import productPriceModel from "../models/productPriceModel.js";
 import stockLedgerModel from "../models/stockLedgerModel.js";
 import customerModel from "../models/customerModel.js";
+import priceListModel from "../models/priceListModel.js";
 import { applyPromotions, calculateReward } from "./promotionEngine.js";
 import snap from "../config/midtrans.js";
 import midtransClient from "midtrans-client";
@@ -14,6 +15,18 @@ const coreApi = new midtransClient.CoreApi({
   serverKey: process.env.MIDTRANS_SERVER_KEY,
   clientKey: process.env.MIDTRANS_CLIENT_KEY,
 });
+
+const CUSTOMER_GROUP_PRICE_LIST_CODE = {
+  GENERAL: "NORMAL",
+  MEMBER: "MEMBER",
+  GROSIR: "GROSIR",
+};
+
+const getPriceListCodeFromCustomerGroup = (customerGroup) => {
+  if (!customerGroup) return null;
+  const normalized = customerGroup.trim().toUpperCase();
+  return CUSTOMER_GROUP_PRICE_LIST_CODE[normalized] ?? normalized;
+};
 
 const generateInvoiceNumber = async () => {
   const date = new Date();
@@ -28,9 +41,26 @@ const generateInvoiceNumber = async () => {
 };
 
 /**
- * Validasi semua items: variant exists, price exists, stock cukup
+ * Get default price_list_id for a customer based on their customer_group.
+ * Returns null if customer not found or no matching price list.
  */
-const validateItems = async (items, priceListId) => {
+const getDefaultPriceListId = async (customerId) => {
+  if (!customerId) return null;
+  const customer = await customerModel.findById(customerId);
+  if (!customer || !customer.customer_group) return null;
+  const priceListCode = getPriceListCodeFromCustomerGroup(
+    customer.customer_group,
+  );
+  if (!priceListCode) return null;
+  const priceList = await priceListModel.findByCode(priceListCode);
+  return priceList ? priceList.id : null;
+};
+
+/**
+ * Validasi semua items: variant exists, price exists, stock cukup.
+ * Each item must contain its own price_list_id (or we fallback to customer default).
+ */
+const validateItems = async (items, customerId) => {
   const validated = [];
 
   for (const item of items) {
@@ -50,6 +80,17 @@ const validateItems = async (items, priceListId) => {
       );
     }
 
+    // Determine which price list to use for this item
+    let priceListId = item.price_list_id;
+    if (!priceListId && customerId !== undefined) {
+      priceListId = await getDefaultPriceListId(customerId);
+    }
+    if (!priceListId) {
+      throw new Error(
+        `price_list_id is required for item (variant ${item.product_variant_id})`,
+      );
+    }
+
     const prices = await productPriceModel.findByVariantId(
       item.product_variant_id,
     );
@@ -64,7 +105,7 @@ const validateItems = async (items, priceListId) => {
 
     if (!applicablePrice) {
       throw new Error(
-        `No active price found for variant ${variant.name} in the selected price list`,
+        `No active price found for variant ${variant.name} in price list ${priceListId}`,
       );
     }
 
@@ -75,7 +116,7 @@ const validateItems = async (items, priceListId) => {
       product_id: variant.product_id,
       category_id: variant.category_id,
       variant_name: variant.name,
-      price_list_id: priceListId,
+      price_list_id: priceListId, // store the actual price list used
       price_list_name: applicablePrice.price_list_name,
       qty: item.qty,
       unit_price: parseFloat(applicablePrice.price),
@@ -89,22 +130,19 @@ const validateItems = async (items, priceListId) => {
 };
 
 const createTransaction = async (data) => {
-  const {
-    customer_id,
-    price_list_id,
-    items,
-    promo_codes,
-    voucher_codes,
-    payment_method,
-    delivery_address,
-    delivery_city,
-    delivery_region,
-    delivery_subregion,
-    delivery_note,
-    preview_only = false,
-  } = data;
-
-  if (!price_list_id) throw new Error("price_list_id is required");
+const {
+     customer_id,
+     items,
+     promo_codes,
+     voucher_codes,
+     payment_method,
+     delivery_address,
+     delivery_city,
+     delivery_region,
+     delivery_subregion,
+     delivery_note,
+     preview_only = false,
+   } = data;
   if (!items || items.length === 0)
     throw new Error("Transaction must have at least one item");
 
@@ -135,11 +173,12 @@ const createTransaction = async (data) => {
     if (!customer) throw new Error("Customer not found");
   }
 
-  const validatedItems = await validateItems(items, price_list_id);
-  const subtotal = validatedItems.reduce((sum, item) => sum + item.subtotal, 0);
-  const totalQty = validatedItems.reduce((sum, item) => sum + item.qty, 0);
-
-  const context = {
+  const validatedItems = await validateItems(items, customer_id);
+const subtotal = validatedItems.reduce((sum, item) => sum + item.subtotal, 0);
+   const totalQty = validatedItems.reduce((sum, item) => sum + item.qty, 0);
+   // Compute default price list ID for the transaction (for free items and fallback)
+   const defaultPriceListId = await getDefaultPriceListId(customer_id);
+   const context = {
     subtotal,
     totalQty,
     items: validatedItems,
@@ -225,29 +264,30 @@ const createTransaction = async (data) => {
         continue; // Skip free item ini, jangan tambahkan
       }
 
-      const prices = await productPriceModel.findByVariantId(
-        freeItem.variantId,
-      );
-      const applicablePrice = prices
-        .filter(
-          (p) =>
-            p.price_list_id === price_list_id &&
-            p.is_active &&
-            p.min_qty <= freeItem.qty,
-        )
-        .sort((a, b) => b.min_qty - a.min_qty)[0];
+const prices = await productPriceModel.findByVariantId(
+         freeItem.variantId,
+       );
+       const applicablePrice = prices
+         .filter(
+           (p) =>
+             p.price_list_id === defaultPriceListId &&
+             p.is_active &&
+             p.min_qty <= freeItem.qty,
+         )
+         .sort((a, b) => b.min_qty - a.min_qty)[0];
 
       const actualUnitPrice = applicablePrice
         ? parseFloat(applicablePrice.price)
         : 0;
 
-      freeItemsToInsert.push({
-        variantId: freeItem.variantId,
-        qty: freeItem.qty,
-        actualUnitPrice,
-        name: freeVariant.name,
-        promotionId,
-      });
+freeItemsToInsert.push({
+         variantId: freeItem.variantId,
+         qty: freeItem.qty,
+         actualUnitPrice,
+         name: freeVariant.name,
+         promotionId,
+         price_list_id: defaultPriceListId,
+       });
     } catch (e) {
       console.error(
         `Error processing free item ${freeItem.variantId}:`,
@@ -433,7 +473,7 @@ const createTransaction = async (data) => {
             freeItemId,
             transactionId,
             freeRow.variantId,
-            price_list_id,
+            freeRow.price_list_id,
             freeRow.qty,
             itemUnitPrice,
             itemUnitPrice,
