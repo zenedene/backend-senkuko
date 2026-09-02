@@ -17,6 +17,7 @@ export async function seed(knex) {
       claimed_at: new Date('2026-07-01T10:30:00'),
       usage_limit: 1,
       usage_count: 1,
+      visibility: 'private',
     },
     {
       id: uuidv4(),
@@ -27,6 +28,7 @@ export async function seed(knex) {
       claimed_at: null,
       usage_limit: 1,
       usage_count: 0,
+      visibility: 'public',
     },
     {
       id: uuidv4(),
@@ -37,6 +39,7 @@ export async function seed(knex) {
       claimed_at: null,
       usage_limit: 1,
       usage_count: 0,
+      visibility: 'public',
     },
     {
       id: uuidv4(),
@@ -47,6 +50,7 @@ export async function seed(knex) {
       claimed_at: null,
       usage_limit: 1,
       usage_count: 0,
+      visibility: 'public',
     },
     {
       id: uuidv4(),
@@ -57,6 +61,7 @@ export async function seed(knex) {
       claimed_at: null,
       usage_limit: 1,
       usage_count: 0,
+      visibility: 'public',
     },
   ]);
 }

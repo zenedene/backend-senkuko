@@ -42,19 +42,28 @@ const findByPromotionId = async (promotionId) => {
 };
 
 const create = async (data) => {
-  const { id, promotion_id, code, usage_limit } = data;
+  const { id, promotion_id, code, usage_limit, visibility } = data;
   await pool.query(`
-    INSERT INTO vouchers (id, promotion_id, code, status, usage_limit, usage_count)
-    VALUES (?, ?, ?, 'active', ?, 0)
-  `, [id, promotion_id, code, usage_limit ?? 1]);
+    INSERT INTO vouchers (id, promotion_id, code, status, usage_limit, usage_count, visibility)
+    VALUES (?, ?, ?, 'active', ?, 0, ?)
+  `, [id, promotion_id, code, usage_limit ?? 1, visibility ?? 'public']);
   return findById(id);
 };
 
 const update = async (id, data) => {
-  const { code, status, usage_limit } = data;
+  const current = await findById(id);
+  const { code, status, usage_limit, visibility } = data;
   await pool.query(`
-    UPDATE vouchers SET code = ?, status = ?, usage_limit = ? WHERE id = ?
-  `, [code, status, usage_limit, id]);
+    UPDATE vouchers
+    SET code = ?, status = ?, usage_limit = ?, visibility = ?
+    WHERE id = ?
+  `, [
+    code ?? current.code,
+    status ?? current.status,
+    usage_limit ?? current.usage_limit,
+    visibility ?? current.visibility,
+    id,
+  ]);
   return findById(id);
 };
 

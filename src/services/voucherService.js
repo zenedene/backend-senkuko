@@ -3,6 +3,7 @@ import voucherModel from '../models/voucherModel.js';
 import promotionManagementModel from '../models/promotionManagementModel.js';
 
 const VALID_STATUSES = ['active', 'inactive'];
+const VALID_VISIBILITIES = ['public', 'private'];
 
 const getAllVouchers = async () => {
   return await voucherModel.findAll();
@@ -17,6 +18,10 @@ const getVoucherById = async (id) => {
 const createVoucher = async (data) => {
   if (!data.promotion_id) throw new Error('promotion_id is required');
   if (!data.code) throw new Error('Voucher code is required');
+
+  if (data.visibility && !VALID_VISIBILITIES.includes(data.visibility)) {
+    throw new Error(`Invalid visibility. Valid values: ${VALID_VISIBILITIES.join(', ')}`);
+  }
 
   const promotion = await promotionManagementModel.findById(data.promotion_id);
   if (!promotion) throw new Error('Promotion not found');
@@ -35,6 +40,10 @@ const updateVoucher = async (id, data) => {
 
   if (data.status && !VALID_STATUSES.includes(data.status)) {
     throw new Error(`Invalid status. Valid values: ${VALID_STATUSES.join(', ')}`);
+  }
+
+  if (data.visibility && !VALID_VISIBILITIES.includes(data.visibility)) {
+    throw new Error(`Invalid visibility. Valid values: ${VALID_VISIBILITIES.join(', ')}`);
   }
 
   if (data.code !== existing.code) {
